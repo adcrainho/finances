@@ -108,7 +108,7 @@
 
     .toolbar {
       display: flex;
-      flex-wrap: wrap;
+      flex-wrap: nowrap;
       align-items: center;
       justify-content: space-between;
       gap: 12px;
@@ -117,8 +117,23 @@
     }
 
     .status {
+      flex: 1 1 auto;
+      min-width: 0;
       color: var(--muted);
       font-size: 0.88rem;
+    }
+
+    .hero-side {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .account {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 6px;
     }
 
     .status[data-state="ok"] {
@@ -140,8 +155,10 @@
 
     .actions {
       display: flex;
-      flex-wrap: wrap;
+      flex: 0 0 auto;
+      flex-wrap: nowrap;
       gap: 9px;
+      margin-left: auto;
     }
 
     button {
@@ -533,6 +550,18 @@
 
       .summary {
         min-width: 0;
+        flex: 1;
+      }
+
+      .hero-side {
+        flex-direction: column-reverse;
+        align-items: stretch;
+      }
+
+      .account {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
       }
 
       .toolbar {
@@ -542,6 +571,11 @@
 
       .actions button {
         flex: 1;
+      }
+
+      .actions {
+        order: -1;
+        margin-left: 0;
       }
     }
 
@@ -581,19 +615,23 @@
         <h1>BMW insurance account</h1>
         <p class="subtitle">Edit values directly. Totals and annual increases update automatically.</p>
       </div>
-      <aside class="summary" aria-label="Total increase">
-        <span>Total increase</span>
-        <strong id="grandTotal">€0.00</strong>
-      </aside>
+      <div class="hero-side">
+        <div class="account" id="accountBox" hidden>
+          <span class="account-info" id="accountInfo" hidden></span>
+          <button type="button" id="signInButton" hidden>Sign in with Microsoft</button>
+          <button type="button" id="signOutButton" hidden>Sign out</button>
+        </div>
+        <aside class="summary" aria-label="Total increase">
+          <span>Total increase</span>
+          <strong id="grandTotal">€0.00</strong>
+        </aside>
+      </div>
     </header>
 
     <section class="card">
       <div class="toolbar">
         <span class="status" id="saveStatus">Loading…</span>
         <div class="actions">
-          <span class="account-info" id="accountInfo" hidden></span>
-          <button type="button" id="signInButton" hidden>Sign in with Microsoft</button>
-          <button type="button" id="signOutButton" hidden>Sign out</button>
           <button type="button" id="exportButton">Export CSV</button>
           <button type="button" class="primary" id="addButton">+ Add line</button>
         </div>
@@ -1134,6 +1172,7 @@
       signInButton.hidden = !cloud.msal || signedIn;
       signOutButton.hidden = !signedIn;
       accountInfo.hidden = !signedIn;
+      document.querySelector("#accountBox").hidden = signInButton.hidden && !signedIn;
       accountInfo.textContent = signedIn ? cloud.account.username : "";
     }
 
@@ -1143,7 +1182,7 @@
         return (await cloud.msal.acquireTokenSilent(request)).accessToken;
       } catch (error) {
         if (error instanceof msal.InteractionRequiredAuthError) {
-          await cloud.msal.acquireTokenRedirect(request);
+          await cloud.msal.acquireTokenRedirect({ ...request, extraQueryParameters: { ui_locales: "en-US" } });
         }
         throw error;
       }
@@ -1272,7 +1311,7 @@
     }
 
     signInButton.addEventListener("click", () => {
-      cloud.msal.loginRedirect({ scopes: ONEDRIVE_CONFIG.scopes, prompt: "select_account" });
+      cloud.msal.loginRedirect({ scopes: ONEDRIVE_CONFIG.scopes, prompt: "select_account", extraQueryParameters: { ui_locales: "en-US" } });
     });
 
     signOutButton.addEventListener("click", () => {
