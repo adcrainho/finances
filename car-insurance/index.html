@@ -1112,16 +1112,23 @@
     }
 
     // ---------- OneDrive (Microsoft Graph) ----------
-    const cloud = { msal: null, account: null, uploadTimer: null, uploading: false, pending: false, dirty: false };
+    const cloud = { loaded: false, appFolderId: null, msal: null, account: null, uploadTimer: null, uploading: false, pending: false, dirty: false };
     const signInButton = document.querySelector("#signInButton");
     const signOutButton = document.querySelector("#signOutButton");
     const accountInfo = document.querySelector("#accountInfo");
 
-    function graphFileUrl() {
-      const path = ONEDRIVE_CONFIG.filePath.split("/").map(encodeURIComponent).join("/");
-      return `https://graph.microsoft.com/v1.0/me/drive/special/approot:/${path}:/content`;
-    }
+    const GRAPH = "https://graph.microsoft.com/v1.0";
 
+    // Resolve the isolated app folder (Apps/<app name>) by id; accessing it also makes OneDrive create it.
+    async function fileUrl(token, suffix = "") {
+      if (!cloud.appFolderId) {
+        const folderResponse = await fetch(`${GRAPH}/me/drive/special/approot`, { headers: { Authorization: "Bearer " + token } });
+        if (!folderResponse.ok) throw new Error(await describeGraphError(folderResponse, "folder"));
+        cloud.appFolderId = (await folderResponse.json()).id;
+      }
+      const path = ONEDRIVE_CONFIG.filePath.split("/").map(encodeURIComponent).join("/");
+      return `${GRAPH}/me/drive/items/${cloud.appFolderId}:/${path}${suffix}`;
+    }
     function updateAuthUi() {
       const signedIn = Boolean(cloud.account);
       signInButton.hidden = !cloud.msal || signedIn;
@@ -1151,23 +1158,21 @@
       setStatus("Loading from OneDrive…");
       try {
         const token = await getToken();
-        // Accessing approot first makes OneDrive create the isolated app folder if it doesn't exist yet.
-        const folderResponse = await fetch("https://graph.microsoft.com/v1.0/me/drive/special/approot", { headers: { Authorization: "Bearer " + token } });
-        if (!folderResponse.ok) throw new Error(await describeGraphError(folderResponse, "folder"));
-        const response = await fetch(graphFileUrl(), { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" });
-        if (response.status === 404) {
-          if (rows.some((row) => !row.isNew)) {
-            await uploadCsv();
-          } else {
-            // Make sure the isolated app folder exists so it syncs to the PC.
-            await fetch("https://graph.microsoft.com/v1.0/me/drive/special/approot", { headers: { Authorization: `Bearer ${token}` } });
-            setStatus(`File not found in Apps/Car_Insurance/${ONEDRIVE_CONFIG.filePath} · it will be created when the first line is saved.`);
-          }
+        const metaResponse = await fetch(await fileUrl(token), { headers: { Authorization: "Bearer " + token } });
+        if (metaResponse.status === 404) {
+          cloud.loaded = true;
+          if (rows.some((row) => !row.isNew)) await uploadCsv();
+          else setStatus(`File not found in Apps/Car_Insurance/${ONEDRIVE_CONFIG.filePath} · it will be created when the first line is saved.`);
           return;
         }
-        if (!response.ok) throw new Error(await describeGraphError(response, "file"));
+        if (!metaResponse.ok) throw new Error(await describeGraphError(metaResponse, "file"));
+        const downloadUrl = (await metaResponse.json())["@microsoft.graph.downloadUrl"];
+        if (!downloadUrl) throw new Error("file has no download URL");
+        const response = await fetch(downloadUrl);
+        if (!response.ok) throw new Error(`download HTTP ${response.status}`);
         const cloudRows = parseCsv(await response.text());
         if (cloud.dirty || isEditing()) return;
+        cloud.loaded = true;
         rows = cloudRows;
         localStorage.setItem(STORAGE_KEY, JSON.stringify(rows));
         render();
@@ -1177,7 +1182,6 @@
         setStatus(`Could not load from OneDrive (${error.message || error.errorCode || error}) · showing the last copy on this device.`, "error");
       }
     }
-
     async function describeGraphError(response, what) {
       let detail = "";
       try {
@@ -1196,6 +1200,11 @@
 
     async function uploadCsv() {
       if (!cloud.account) return;
+      // Never overwrite the OneDrive file before it has been read successfully.
+      if (!cloud.loaded) {
+        setStatus("Not saved to OneDrive: the file could not be loaded first · reload the page (data is saved on this device).", "error");
+        return;
+      }
       if (cloud.uploading) {
         cloud.pending = true;
         return;
@@ -1204,7 +1213,7 @@
       cloud.dirty = false;
       try {
         const token = await getToken();
-        const response = await fetch(graphFileUrl(), {
+        const response = await fetch(await fileUrl(token, ":/content"), {
           method: "PUT",
           headers: { Authorization: `Bearer ${token}`, "Content-Type": "text/csv" },
           body: buildCsv(rows.filter((row) => !row.isNew))
