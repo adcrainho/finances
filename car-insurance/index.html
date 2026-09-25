@@ -3,26 +3,1279 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Finances</title>
+  <title>BMW Insurance Account</title>
+  <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.28.1/lib/msal-browser.min.js" integrity="sha384-B5PXeUfgiegchZiX5iMRssMrHd9NfPhFnITob1HyW1CY76udptWpBsniaDsH/+BY" crossorigin="anonymous"></script>
   <style>
-    body { margin: 0; min-height: 100vh; font-family: Inter, "Segoe UI", Roboto, Arial, sans-serif; background: #f3f6fb; color: #172033; }
-    main { max-width: 720px; margin: 0 auto; padding: 48px 20px; }
-    h1 { margin: 0 0 6px; font-size: 2rem; }
-    p { margin: 0 0 28px; color: #667085; }
-    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px; }
-    a.tile { display: block; padding: 20px; border: 1px solid rgba(23,32,51,.08); border-radius: 16px; background: #fff; color: inherit; text-decoration: none; box-shadow: 0 10px 30px rgba(23,32,51,.08); transition: 140ms ease; }
-    a.tile:hover { transform: translateY(-2px); border-color: #1c69d4; }
-    .tile strong { display: block; margin-bottom: 4px; font-size: 1.05rem; }
-    .tile span { color: #667085; font-size: .88rem; }
+    :root {
+      color-scheme: light;
+      --ink: #172033;
+      --muted: #667085;
+      --line: #d9dee8;
+      --soft: #f5f7fa;
+      --panel: #ffffff;
+      --accent: #1c69d4;
+      --accent-dark: #0f4fa8;
+      --positive: #087443;
+      --negative: #b42318;
+      --shadow: 0 18px 50px rgba(23, 32, 51, 0.1);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-width: 320px;
+      background:
+        radial-gradient(circle at top right, rgba(28, 105, 212, 0.12), transparent 34rem),
+        #eef2f7;
+      color: var(--ink);
+      font-family: Inter, "Segoe UI", Roboto, Arial, sans-serif;
+    }
+
+    button,
+    input {
+      font: inherit;
+    }
+
+    .page {
+      width: min(1180px, calc(100% - 32px));
+      margin: 40px auto;
+    }
+
+    .hero {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 24px;
+      margin-bottom: 22px;
+    }
+
+    .eyebrow {
+      margin: 0 0 7px;
+      color: var(--accent);
+      font-size: 0.76rem;
+      font-weight: 800;
+      letter-spacing: 0.13em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(1.8rem, 4vw, 3.25rem);
+      letter-spacing: -0.045em;
+      line-height: 1;
+    }
+
+    .subtitle {
+      margin: 10px 0 0;
+      color: var(--muted);
+    }
+
+    .summary {
+      min-width: 230px;
+      padding: 17px 20px;
+      border: 1px solid rgba(28, 105, 212, 0.17);
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.72);
+      box-shadow: 0 8px 24px rgba(23, 32, 51, 0.05);
+      backdrop-filter: blur(10px);
+    }
+
+    .summary span {
+      display: block;
+      margin-bottom: 5px;
+      color: var(--muted);
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .summary strong {
+      font-size: 1.7rem;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .card {
+      overflow: hidden;
+      border: 1px solid rgba(23, 32, 51, 0.08);
+      border-radius: 20px;
+      background: var(--panel);
+      box-shadow: var(--shadow);
+    }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 16px 18px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .status {
+      color: var(--muted);
+      font-size: 0.88rem;
+    }
+
+    .status[data-state="ok"] {
+      color: var(--positive);
+    }
+
+    .status[data-state="error"] {
+      color: var(--negative);
+    }
+
+    .account-info {
+      color: var(--muted);
+      font-size: 0.8rem;
+    }
+
+    [hidden] {
+      display: none !important;
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 9px;
+    }
+
+    button {
+      min-height: 40px;
+      padding: 0 15px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #fff;
+      color: var(--ink);
+      cursor: pointer;
+      font-weight: 700;
+      transition: 140ms ease;
+    }
+
+    button:hover {
+      border-color: #aeb8c7;
+      background: var(--soft);
+      transform: translateY(-1px);
+    }
+
+    button.primary {
+      border-color: var(--accent);
+      background: var(--accent);
+      color: #fff;
+    }
+
+    button.primary:hover {
+      border-color: var(--accent-dark);
+      background: var(--accent-dark);
+    }
+
+    button.icon {
+      width: 34px;
+      min-height: 34px;
+      padding: 0;
+      border-color: transparent;
+      background: transparent;
+      color: #98a2b3;
+      font-size: 1.2rem;
+    }
+
+    button.icon:hover {
+      color: var(--negative);
+      background: #fff1f0;
+    }
+
+    button.icon.edit-icon:hover {
+      color: var(--accent);
+      background: rgba(28, 105, 212, 0.08);
+    }
+
+    button.icon.edit-icon.active {
+      color: var(--accent);
+    }
+
+    button.icon.confirm-icon {
+      color: var(--positive);
+    }
+
+    button.icon.confirm-icon:hover {
+      color: #056636;
+      background: #e9f7ef;
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      min-width: 920px;
+      border-collapse: collapse;
+    }
+
+    th,
+    td {
+      padding: 12px 10px;
+      border-bottom: 1px solid var(--line);
+      text-align: center;
+      white-space: nowrap;
+    }
+
+    th {
+      background: #f8fafc;
+      color: #475467;
+      font-size: 0.73rem;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    th:first-child,
+    td:first-child {
+      padding-left: 18px;
+    }
+
+    th:last-child,
+    td:last-child {
+      padding-right: 18px;
+      text-align: center;
+    }
+
+    .date-col {
+      text-align: center;
+    }
+
+    th.date-col {
+      padding-right: 30px;
+    }
+
+    .number {
+      text-align: center;
+    }
+
+    .number-center {
+      text-align: center;
+    }
+
+    tbody tr {
+      transition: background 120ms ease;
+    }
+
+    tbody tr:hover {
+      background: #f8fbff;
+    }
+
+    tbody tr.adjustment {
+      background: #f4f6f8;
+    }
+
+    tbody tr:last-child td {
+      border-bottom: 0;
+    }
+
+    input {
+      width: 100%;
+      min-width: 92px;
+      padding: 9px 10px;
+      border: 1px solid transparent;
+      border-radius: 8px;
+      background: transparent;
+      color: var(--ink);
+      font-variant-numeric: tabular-nums;
+      outline: none;
+      text-align: center;
+    }
+
+    input:hover {
+      border-color: var(--line);
+      background: #fff;
+    }
+
+    input:read-only {
+      color: var(--ink) !important;
+    }
+
+    input:focus {
+      border-color: var(--accent);
+      background: #fff;
+      box-shadow: 0 0 0 3px rgba(28, 105, 212, 0.12);
+    }
+
+    input[type="date"] {
+      width: auto;
+      min-width: 0;
+      max-width: 125px;
+      color: var(--ink);
+      text-align: center;
+      padding: 9px 6px;
+    }
+
+    input[type="number"]::-webkit-outer-spin-button,
+    input[type="number"]::-webkit-inner-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+
+    input[type="number"] {
+      -moz-appearance: textfield;
+    }
+
+    .cell-stack {
+      display: inline-flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+    }
+
+    .cell-stack-right {
+      align-items: center;
+    }
+
+    .currency-field {
+      display: inline-flex;
+      align-items: baseline;
+      justify-content: center;
+      padding: 0 4px;
+      border: 1px solid transparent;
+      border-radius: 6px;
+      background: transparent;
+    }
+
+    .cell-stack-right .currency-field {
+      justify-content: center;
+    }
+
+    .currency-field:hover {
+      border-color: var(--line);
+      background: #fff;
+    }
+
+    .currency-field:focus-within {
+      border-color: var(--accent);
+      background: #fff;
+      box-shadow: 0 0 0 3px rgba(28, 105, 212, 0.12);
+    }
+
+    .currency-field input {
+      flex: 0 1 auto;
+      width: 7ch;
+      min-width: 0;
+      padding: 0;
+      border: 0;
+      text-align: right;
+      font-weight: 400;
+    }
+
+    .currency-field input:hover,
+    .currency-field input:focus {
+      border: 0;
+      background: transparent;
+      box-shadow: none;
+    }
+
+    .currency-suffix {
+      color: var(--ink);
+      font-weight: 400;
+    }
+
+    tbody tr.locked {
+      background: #fafbfc;
+    }
+
+    .row-actions {
+      display: inline-flex;
+      justify-content: center;
+      gap: 4px;
+    }
+
+    .calculated-value {
+      font-weight: 750;
+      color: var(--ink);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .diff-note {
+      font-size: 0.82rem;
+      font-weight: 700;
+      line-height: 1;
+    }
+
+    .diff-note.positive {
+      color: #f4574d;
+    }
+
+    .diff-note.negative {
+      color: var(--positive);
+    }
+
+    .diff-note.invisible {
+      visibility: hidden;
+    }
+
+    .empty {
+      color: #98a2b3;
+    }
+
+    .footer-note {
+      margin: 14px 2px 0;
+      color: var(--muted);
+      font-size: 0.82rem;
+      text-align: right;
+    }
+
+    .chart-card {
+      margin-top: 20px;
+      padding: 20px 22px 16px;
+    }
+
+    .chart-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .chart-header h2 {
+      margin: 0;
+      font-size: 1rem;
+      color: var(--ink);
+    }
+
+    .chart-legend {
+      display: flex;
+      gap: 18px;
+      font-size: 0.82rem;
+      color: var(--muted);
+    }
+
+    .legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .legend-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+
+    .dot-car {
+      background: #1c69d4;
+    }
+
+    .dot-total {
+      background: #0f9d58;
+    }
+
+    .chart-wrap {
+      width: 100%;
+    }
+
+    #totalsChart {
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+
+    .chart-grid-line {
+      stroke: var(--line);
+      stroke-width: 1;
+    }
+
+    .chart-axis-label {
+      fill: var(--muted);
+      font-size: 12px;
+    }
+
+    .chart-line-car {
+      fill: none;
+      stroke: #1c69d4;
+      stroke-width: 2.5;
+    }
+
+    .chart-line-total {
+      fill: none;
+      stroke: #0f9d58;
+      stroke-width: 2.5;
+    }
+
+    .chart-point-car {
+      fill: #1c69d4;
+    }
+
+    .chart-point-total {
+      fill: #0f9d58;
+    }
+
+    .chart-point-label {
+      font-size: 11px;
+      fill: var(--ink);
+      font-weight: 700;
+    }
+
+    @media (max-width: 720px) {
+      .page {
+        width: min(100% - 20px, 1180px);
+        margin: 24px auto;
+      }
+
+      .hero {
+        align-items: stretch;
+        flex-direction: column;
+      }
+
+      .summary {
+        min-width: 0;
+      }
+
+      .toolbar {
+        align-items: stretch;
+        flex-direction: column;
+      }
+
+      .actions button {
+        flex: 1;
+      }
+    }
+
+    @media print {
+      body {
+        background: #fff;
+      }
+
+      .page {
+        width: 100%;
+        margin: 0;
+      }
+
+      .card {
+        border: 0;
+        box-shadow: none;
+      }
+
+      .toolbar,
+      .footer-note,
+      .delete-cell {
+        display: none;
+      }
+
+      input {
+        padding: 0;
+        border: 0;
+      }
+    }
   </style>
 </head>
 <body>
-  <main>
-    <h1>Finances</h1>
-    <p>Personal finance tools, synced with OneDrive.</p>
-    <div class="grid">
-      <a class="tile" href="car-insurance/"><strong>🚗 Car Insurance</strong><span>BMW insurance account over time</span></a>
-    </div>
+  <main class="page">
+    <header class="hero">
+      <div>
+        <p class="eyebrow">Insurance overview</p>
+        <h1>BMW insurance account</h1>
+        <p class="subtitle">Edit values directly. Totals and annual increases update automatically.</p>
+      </div>
+      <aside class="summary" aria-label="Total increase">
+        <span>Total increase</span>
+        <strong id="grandTotal">€0.00</strong>
+      </aside>
+    </header>
+
+    <section class="card">
+      <div class="toolbar">
+        <span class="status" id="saveStatus">A carregar…</span>
+        <div class="actions">
+          <span class="account-info" id="accountInfo" hidden></span>
+          <button type="button" id="signInButton" hidden>Entrar com Microsoft</button>
+          <button type="button" id="signOutButton" hidden>Sair</button>
+          <button type="button" id="exportButton">Export CSV</button>
+          <button type="button" class="primary" id="addButton">+ Add line</button>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th class="date-col">Date</th>
+              <th class="number">Life Insurance</th>
+              <th class="number">Car Insurance</th>
+              <th class="number">Discount</th>
+              <th class="number number-center">Total Car</th>
+              <th class="number number-center">Total</th>
+              <th class="delete-cell">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="card chart-card">
+      <div class="chart-header">
+        <h2>Totals over time</h2>
+        <div class="chart-legend">
+          <span class="legend-item"><i class="legend-dot dot-car"></i>Total Car</span>
+          <span class="legend-item"><i class="legend-dot dot-total"></i>Total</span>
+        </div>
+      </div>
+      <div class="chart-wrap">
+        <svg id="totalsChart" viewBox="0 0 900 320" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Total Car and Total by date"></svg>
+      </div>
+    </section>
   </main>
+
+  <script>
+    // OneDrive backend: paste the "Application (client) ID" from the Azure app registration here.
+    const ONEDRIVE_CONFIG = {
+      clientId: "941344c6-c92e-403a-afcd-9c50b07c9d23",
+      authority: "https://login.microsoftonline.com/consumers",
+      // Relative to the app's isolated OneDrive folder (Apps/Car_Insurance); the page cannot access anything else.
+      filePath: "car_insurance.csv",
+      scopes: ["Files.ReadWrite.AppFolder", "User.Read"]
+    };
+
+    const STORAGE_KEY = "bmw-insurance-account-v4";
+    const initialRows = [];
+
+    const body = document.querySelector("#tableBody");
+    const grandTotal = document.querySelector("#grandTotal");
+    const saveStatus = document.querySelector("#saveStatus");
+
+    let rows = loadRows();
+    let saveTimer;
+
+    function loadRows() {
+      try {
+        const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+        return Array.isArray(saved) ? saved : structuredClone(initialRows);
+      } catch {
+        return structuredClone(initialRows);
+      }
+    }
+
+    function numberOrZero(value) {
+      const parsed = Number.parseFloat(String(value).replace(",", "."));
+      return Number.isFinite(parsed) ? parsed : 0;
+    }
+
+    function formatEuro(value, withSign = false) {
+      const abs = Math.abs(value).toFixed(2);
+      if (withSign) {
+        return `${value >= 0 ? "+" : "-"}${abs}€`;
+      }
+      return `${value.toFixed(2)}€`;
+    }
+
+    function hasAmount(row) {
+      return [row.life, row.bmw, row.discount].some(value => String(value).trim() !== "");
+    }
+
+    function totalFor(row) {
+      return hasAmount(row)
+        ? numberOrZero(row.life) + numberOrZero(row.bmw) - numberOrZero(row.discount)
+        : null;
+    }
+
+    function totalCarFor(row) {
+      return String(row.bmw).trim() === "" && String(row.discount).trim() === ""
+        ? null
+        : numberOrZero(row.bmw) - numberOrZero(row.discount);
+    }
+
+    function fieldDiff(index, field) {
+      if (index === 0) {
+        return null;
+      }
+      const currentRaw = String(rows[index][field] ?? "").trim();
+      const previousRaw = String(rows[index - 1][field] ?? "").trim();
+      return currentRaw === "" || previousRaw === ""
+        ? null
+        : numberOrZero(currentRaw) - numberOrZero(previousRaw);
+    }
+
+    function totalCarDiff(index) {
+      if (index === 0) {
+        return null;
+      }
+      const current = totalCarFor(rows[index]);
+      const previous = totalCarFor(rows[index - 1]);
+      return current === null || previous === null ? null : current - previous;
+    }
+
+    function increaseFor(index) {
+      if (index === 0) {
+        return null;
+      }
+      const current = totalFor(rows[index]);
+      const previous = totalFor(rows[index - 1]);
+      return current === null || previous === null ? null : current - previous;
+    }
+
+    function applyLockState(input, locked) {
+      input.readOnly = locked;
+      input.classList.toggle("locked-input", locked);
+    }
+
+    function makeDateInput(rowIndex, locked) {
+      const input = document.createElement("input");
+      input.type = "date";
+      input.value = rows[rowIndex].date ?? "";
+      applyLockState(input, locked);
+      input.setAttribute("aria-label", `date for row ${rowIndex + 1}`);
+      input.addEventListener("input", event => {
+        rows[rowIndex].date = event.target.value;
+        save();
+        updateCalculations();
+      });
+      return input;
+    }
+
+    function makeCurrencyInput(rowIndex, field, locked) {
+      const wrapper = document.createElement("div");
+      wrapper.className = "currency-field";
+      wrapper.classList.toggle("locked-field", locked);
+
+      const input = document.createElement("input");
+      input.type = "number";
+      input.step = "0.01";
+      input.inputMode = "decimal";
+      input.className = "number";
+      input.value = rows[rowIndex][field] ?? "";
+      applyLockState(input, locked);
+      input.setAttribute("aria-label", `${field} for row ${rowIndex + 1}`);
+      const fitWidth = () => {
+        input.style.width = `${Math.max(String(input.value).length, 1) + 0.3}ch`;
+      };
+      fitWidth();
+      input.addEventListener("input", event => {
+        rows[rowIndex][field] = event.target.value;
+        fitWidth();
+        save();
+        updateCalculations();
+      });
+
+      const suffix = document.createElement("span");
+      suffix.className = "currency-suffix";
+      suffix.textContent = "€";
+
+      wrapper.append(input, suffix);
+      return wrapper;
+    }
+
+    function updateDiffNote(stack, diffValue) {
+      let note = stack.querySelector(".diff-note");
+      if (!note) {
+        note = document.createElement("div");
+        note.className = "diff-note";
+        stack.append(note);
+      }
+      if (diffValue === null) {
+        note.className = "diff-note invisible";
+        note.textContent = "\u00A0";
+        return;
+      }
+      note.className = `diff-note ${diffValue < 0 ? "negative" : "positive"}`;
+      note.textContent = formatEuro(diffValue, true);
+    }
+
+    function setCalculatedText(el, value) {
+      el.classList.toggle("empty", value === null);
+      el.textContent = value === null ? "—" : formatEuro(value);
+    }
+
+    function makeCalculatedStack() {
+      const stack = document.createElement("div");
+      stack.className = "cell-stack";
+      const valueEl = document.createElement("span");
+      valueEl.className = "calculated-value";
+      stack.append(valueEl);
+      return stack;
+    }
+
+    function updateCalculations() {
+      let totalIncrease = 0;
+      [...body.rows].forEach((tr, index) => {
+        ["life", "bmw", "discount"].forEach((field, fieldIndex) => {
+          const stack = tr.cells[fieldIndex + 1].querySelector(".cell-stack");
+          updateDiffNote(stack, fieldDiff(index, field));
+        });
+
+        const totalCarStack = tr.cells[4].querySelector(".cell-stack");
+        setCalculatedText(totalCarStack.querySelector(".calculated-value"), totalCarFor(rows[index]));
+        updateDiffNote(totalCarStack, totalCarDiff(index));
+
+        const totalStack = tr.cells[5].querySelector(".cell-stack");
+        setCalculatedText(totalStack.querySelector(".calculated-value"), totalFor(rows[index]));
+        const increase = increaseFor(index);
+        totalIncrease += increase ?? 0;
+        updateDiffNote(totalStack, increase);
+      });
+      grandTotal.textContent = formatEuro(totalIncrease);
+    }
+
+    function render() {
+      body.replaceChildren();
+
+      rows.forEach((row, index) => {
+        const tr = document.createElement("tr");
+        const editable = row.isNew || !row.locked;
+        tr.classList.toggle("locked", !editable);
+
+        const dateCell = document.createElement("td");
+        dateCell.className = "date-col";
+        dateCell.append(makeDateInput(index, !editable));
+        tr.append(dateCell);
+
+        ["life", "bmw", "discount"].forEach(field => {
+          const td = document.createElement("td");
+          td.className = "number";
+          const stack = document.createElement("div");
+          stack.className = "cell-stack cell-stack-right";
+          stack.append(makeCurrencyInput(index, field, !editable));
+          td.append(stack);
+          tr.append(td);
+        });
+
+        const totalCarCell = document.createElement("td");
+        totalCarCell.className = "number-center";
+        totalCarCell.append(makeCalculatedStack());
+        tr.append(totalCarCell);
+
+        const totalCell = document.createElement("td");
+        totalCell.className = "number-center";
+        totalCell.append(makeCalculatedStack());
+        tr.append(totalCell);
+
+        const actionsCell = document.createElement("td");
+        actionsCell.className = "delete-cell";
+        const actionsWrap = document.createElement("div");
+        actionsWrap.className = "row-actions";
+
+        if (row.isNew) {
+          const confirmButton = document.createElement("button");
+          confirmButton.type = "button";
+          confirmButton.className = "icon confirm-icon";
+          confirmButton.title = "Add line to table";
+          confirmButton.setAttribute("aria-label", `Confirm row ${index + 1}`);
+          confirmButton.textContent = "✓";
+          confirmButton.addEventListener("click", () => {
+            delete row.isNew;
+            row.locked = true;
+            save();
+            render();
+          });
+
+          const cancelButton = document.createElement("button");
+          cancelButton.type = "button";
+          cancelButton.className = "icon";
+          cancelButton.title = "Discard line";
+          cancelButton.setAttribute("aria-label", `Discard row ${index + 1}`);
+          cancelButton.textContent = "×";
+          cancelButton.addEventListener("click", () => {
+            rows.splice(index, 1);
+            save();
+            render();
+          });
+
+          actionsWrap.append(confirmButton, cancelButton);
+        } else {
+          const editButton = document.createElement("button");
+          editButton.type = "button";
+          editButton.className = `icon edit-icon${editable ? " active" : ""}`;
+          editButton.title = editable ? "Editing enabled" : "Enable editing";
+          editButton.setAttribute("aria-label", `Toggle edit for row ${index + 1}`);
+          editButton.textContent = "✎";
+          editButton.addEventListener("click", () => {
+            row.locked = !row.locked;
+            save();
+            render();
+          });
+
+          const deleteButton = document.createElement("button");
+          deleteButton.type = "button";
+          deleteButton.className = "icon";
+          deleteButton.title = "Delete line";
+          deleteButton.setAttribute("aria-label", `Delete row ${index + 1}`);
+          deleteButton.textContent = "×";
+          deleteButton.addEventListener("click", () => {
+            if (!window.confirm("Delete this line?")) {
+              return;
+            }
+            rows.splice(index, 1);
+            save();
+            render();
+          });
+
+          actionsWrap.append(editButton, deleteButton);
+        }
+
+        actionsCell.append(actionsWrap);
+        tr.append(actionsCell);
+
+        body.append(tr);
+      });
+
+      updateCalculations();
+      renderChart();
+    }
+
+    function renderChart() {
+      const svg = document.getElementById("totalsChart");
+      svg.replaceChildren();
+
+      const points = rows
+        .map(row => ({ date: row.date, car: totalCarFor(row), total: totalFor(row) }))
+        .filter(p => p.date && (p.car !== null || p.total !== null));
+
+      if (points.length === 0) {
+        return;
+      }
+
+      const width = 900;
+      const height = 320;
+      const margin = { top: 20, right: 24, bottom: 40, left: 64 };
+      const innerW = width - margin.left - margin.right;
+      const innerH = height - margin.top - margin.bottom;
+
+      const values = [];
+      points.forEach(p => {
+        if (p.car !== null) values.push(p.car);
+        if (p.total !== null) values.push(p.total);
+      });
+      const minV = Math.min(0, ...values);
+      const maxV = Math.max(...values, 1);
+      const pad = (maxV - minV) * 0.1 || 1;
+      const yMin = minV - pad;
+      const yMax = maxV + pad;
+
+      const xFor = index => margin.left + (points.length === 1 ? innerW / 2 : (innerW * index) / (points.length - 1));
+      const yFor = value => margin.top + innerH - ((value - yMin) / (yMax - yMin)) * innerH;
+
+      const ns = "http://www.w3.org/2000/svg";
+      function el(tag, attrs) {
+        const node = document.createElementNS(ns, tag);
+        Object.entries(attrs).forEach(([key, value]) => node.setAttribute(key, value));
+        return node;
+      }
+
+      const gridCount = 4;
+      for (let g = 0; g <= gridCount; g++) {
+        const y = margin.top + (innerH * g) / gridCount;
+        svg.append(el("line", { x1: margin.left, x2: width - margin.right, y1: y, y2: y, class: "chart-grid-line" }));
+        const value = yMax - ((yMax - yMin) * g) / gridCount;
+        const label = el("text", { x: margin.left - 8, y: y + 4, "text-anchor": "end", class: "chart-axis-label" });
+        label.textContent = formatEuro(value);
+        svg.append(label);
+      }
+
+      points.forEach((point, index) => {
+        const x = xFor(index);
+        const label = el("text", { x, y: height - margin.bottom + 20, "text-anchor": "middle", class: "chart-axis-label" });
+        label.textContent = point.date;
+        svg.append(label);
+      });
+
+      function drawSeries(field, lineClass, pointClass) {
+        const coords = points
+          .map((point, index) => (point[field] === null ? null : [xFor(index), yFor(point[field])]))
+          .filter(Boolean);
+        if (coords.length === 0) {
+          return;
+        }
+        if (coords.length > 1) {
+          const d = coords.map((coord, index) => `${index === 0 ? "M" : "L"}${coord[0]},${coord[1]}`).join(" ");
+          svg.append(el("path", { d, class: lineClass }));
+        }
+        coords.forEach(coord => {
+          svg.append(el("circle", { cx: coord[0], cy: coord[1], r: 4, class: pointClass }));
+        });
+      }
+
+      drawSeries("car", "chart-line-car", "chart-point-car");
+      drawSeries("total", "chart-line-total", "chart-point-total");
+    }
+
+    function setStatus(text, state = "") {
+      saveStatus.textContent = text;
+      saveStatus.dataset.state = state;
+    }
+
+    function save() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(rows));
+      if (cloud.account) {
+        scheduleUpload();
+        return;
+      }
+      setStatus("A guardar…");
+      clearTimeout(saveTimer);
+      saveTimer = setTimeout(() => {
+        setStatus(cloud.msal ? "Guardado só neste aparelho · entra para sincronizar com o OneDrive." : "Guardado neste aparelho.");
+      }, 350);
+    }
+
+    function addRow() {
+      rows.push({ date: "", life: "", bmw: "", discount: "", locked: true, isNew: true });
+      save();
+      render();
+      const lastRow = body.lastElementChild;
+      lastRow?.scrollIntoView({ behavior: "smooth", block: "center" });
+      lastRow?.querySelector("input")?.focus();
+    }
+
+    function escapeCsv(value) {
+      const text = String(value ?? "");
+      return `"${text.replaceAll('"', '""')}"`;
+    }
+
+    function buildCsv(sourceRows) {
+      const header = ["Date", "Life Insurance", "Car Insurance", "Discount", "Total Car", "Total", "Increase"];
+      const output = [header.map(escapeCsv).join(",")];
+      let previousTotal = null;
+      sourceRows.forEach((row) => {
+        const total = totalFor(row);
+        const increase = total !== null && previousTotal !== null ? total - previousTotal : null;
+        output.push([
+          row.date,
+          row.life,
+          row.bmw,
+          row.discount,
+          totalCarFor(row)?.toFixed(2) ?? "",
+          total?.toFixed(2) ?? "",
+          increase?.toFixed(2) ?? ""
+        ].map(escapeCsv).join(","));
+        previousTotal = total;
+      });
+      return "\uFEFF" + output.join("\r\n");
+    }
+
+    function exportCsv() {
+      const blob = new Blob([buildCsv(rows.filter((row) => !row.isNew))], { type: "text/csv;charset=utf-8" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = "bmw_insurance_account.csv";
+      link.click();
+      URL.revokeObjectURL(link.href);
+    }
+
+    function parseCsv(text) {
+      text = text.replace(/^\uFEFF/, "");
+      const firstLine = text.split(/\r?\n/, 1)[0] || "";
+      const delimiter = (firstLine.match(/;/g) || []).length > (firstLine.match(/,/g) || []).length ? ";" : ",";
+      const records = [];
+      let record = [];
+      let field = "";
+      let quoted = false;
+      for (let i = 0; i < text.length; i++) {
+        const char = text[i];
+        if (quoted) {
+          if (char === '"' && text[i + 1] === '"') { field += '"'; i++; }
+          else if (char === '"') quoted = false;
+          else field += char;
+        } else if (char === '"') quoted = true;
+        else if (char === delimiter) { record.push(field); field = ""; }
+        else if (char === "\n" || char === "\r") {
+          if (char === "\r" && text[i + 1] === "\n") i++;
+          record.push(field); records.push(record); record = []; field = "";
+        } else field += char;
+      }
+      if (field !== "" || record.length) { record.push(field); records.push(record); }
+
+      const cleanNumber = (value) => {
+        let v = String(value ?? "").replace(/[€\s]/g, "");
+        if (delimiter === ";" || (v.includes(",") && !v.includes("."))) v = v.replace(/\./g, "").replace(",", ".");
+        return v === "" || Number.isNaN(Number(v)) ? "" : v;
+      };
+      const cleanDate = (value) => {
+        const v = String(value ?? "").trim();
+        const dmy = v.match(/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})$/);
+        if (dmy) return `${dmy[3]}-${dmy[2].padStart(2, "0")}-${dmy[1].padStart(2, "0")}`;
+        return v.slice(0, 10);
+      };
+
+      return records
+        .filter((cells) => cells.some((cell) => cell.trim() !== ""))
+        .filter((cells) => !/^date$/i.test(cells[0].trim()))
+        .map((cells) => ({
+          date: cleanDate(cells[0]),
+          life: cleanNumber(cells[1]),
+          bmw: cleanNumber(cells[2]),
+          discount: cleanNumber(cells[3]),
+          locked: true
+        }));
+    }
+
+    // ---------- OneDrive (Microsoft Graph) ----------
+    const cloud = { msal: null, account: null, uploadTimer: null, uploading: false, pending: false, dirty: false };
+    const signInButton = document.querySelector("#signInButton");
+    const signOutButton = document.querySelector("#signOutButton");
+    const accountInfo = document.querySelector("#accountInfo");
+
+    function graphFileUrl() {
+      const path = ONEDRIVE_CONFIG.filePath.split("/").map(encodeURIComponent).join("/");
+      return `https://graph.microsoft.com/v1.0/me/drive/special/approot:/${path}:/content`;
+    }
+
+    function updateAuthUi() {
+      const signedIn = Boolean(cloud.account);
+      signInButton.hidden = !cloud.msal || signedIn;
+      signOutButton.hidden = !signedIn;
+      accountInfo.hidden = !signedIn;
+      accountInfo.textContent = signedIn ? cloud.account.username : "";
+    }
+
+    async function getToken() {
+      const request = { scopes: ONEDRIVE_CONFIG.scopes, account: cloud.account };
+      try {
+        return (await cloud.msal.acquireTokenSilent(request)).accessToken;
+      } catch (error) {
+        if (error instanceof msal.InteractionRequiredAuthError) {
+          await cloud.msal.acquireTokenRedirect(request);
+        }
+        throw error;
+      }
+    }
+
+    function isEditing() {
+      return rows.some((row) => row.isNew || !row.locked);
+    }
+
+    async function loadFromCloud() {
+      if (!cloud.account || cloud.dirty || cloud.uploading) return;
+      setStatus("A ler do OneDrive…");
+      try {
+        const token = await getToken();
+        const response = await fetch(graphFileUrl(), { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" });
+        if (response.status === 404) {
+          if (rows.some((row) => !row.isNew)) {
+            await uploadCsv();
+          } else {
+            // Make sure the isolated app folder exists so it syncs to the PC.
+            await fetch("https://graph.microsoft.com/v1.0/me/drive/special/approot", { headers: { Authorization: `Bearer ${token}` } });
+            setStatus(`Ficheiro não encontrado em Aplicações/Car_Insurance/${ONEDRIVE_CONFIG.filePath} · será criado ao guardar a primeira linha.`);
+          }
+          return;
+        }
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const cloudRows = parseCsv(await response.text());
+        if (cloud.dirty || isEditing()) return;
+        rows = cloudRows;
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(rows));
+        render();
+        setStatus("Sincronizado com o OneDrive ✓", "ok");
+      } catch (error) {
+        console.error(error);
+        setStatus("Não foi possível ler do OneDrive · a mostrar a última cópia deste aparelho.", "error");
+      }
+    }
+
+    function scheduleUpload() {
+      cloud.dirty = true;
+      setStatus("A guardar no OneDrive…");
+      clearTimeout(cloud.uploadTimer);
+      cloud.uploadTimer = setTimeout(uploadCsv, 800);
+    }
+
+    async function uploadCsv() {
+      if (!cloud.account) return;
+      if (cloud.uploading) {
+        cloud.pending = true;
+        return;
+      }
+      cloud.uploading = true;
+      cloud.dirty = false;
+      try {
+        const token = await getToken();
+        const response = await fetch(graphFileUrl(), {
+          method: "PUT",
+          headers: { Authorization: `Bearer ${token}`, "Content-Type": "text/csv" },
+          body: buildCsv(rows.filter((row) => !row.isNew))
+        });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const time = new Date().toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" });
+        setStatus(`Guardado no OneDrive ✓ (${time})`, "ok");
+      } catch (error) {
+        console.error(error);
+        cloud.dirty = true;
+        setStatus("Erro ao guardar no OneDrive · nova tentativa em 15 s (os dados estão guardados neste aparelho).", "error");
+        clearTimeout(cloud.uploadTimer);
+        cloud.uploadTimer = setTimeout(uploadCsv, 15000);
+      } finally {
+        cloud.uploading = false;
+        if (cloud.pending) {
+          cloud.pending = false;
+          uploadCsv();
+        }
+      }
+    }
+
+    async function initCloud() {
+      if (location.protocol === "file:") {
+        setStatus("Modo local · abre a versão online para sincronizar com o OneDrive.");
+        return;
+      }
+      if (!window.msal) {
+        setStatus("Sem ligação ao serviço Microsoft · dados guardados neste aparelho.", "error");
+        return;
+      }
+      if (!ONEDRIVE_CONFIG.clientId || ONEDRIVE_CONFIG.clientId.startsWith("COLOCAR")) {
+        setStatus("OneDrive não configurado (falta o client ID) · dados guardados neste aparelho.", "error");
+        return;
+      }
+      try {
+        cloud.msal = new msal.PublicClientApplication({
+          auth: {
+            clientId: ONEDRIVE_CONFIG.clientId,
+            authority: ONEDRIVE_CONFIG.authority,
+            redirectUri: location.origin + location.pathname
+          },
+          cache: { cacheLocation: "localStorage" }
+        });
+        await cloud.msal.initialize();
+        const result = await cloud.msal.handleRedirectPromise();
+        cloud.account = result?.account || cloud.msal.getAllAccounts()[0] || null;
+        updateAuthUi();
+        if (cloud.account) await loadFromCloud();
+        else setStatus("Entra com a tua conta Microsoft para usar os dados do OneDrive.");
+      } catch (error) {
+        console.error(error);
+        updateAuthUi();
+        setStatus("Erro no login Microsoft · dados guardados neste aparelho.", "error");
+      }
+    }
+
+    signInButton.addEventListener("click", () => {
+      cloud.msal.loginRedirect({ scopes: ONEDRIVE_CONFIG.scopes, prompt: "select_account" });
+    });
+
+    signOutButton.addEventListener("click", () => {
+      cloud.msal.logoutRedirect({ account: cloud.account, postLogoutRedirectUri: location.origin + location.pathname });
+    });
+
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") loadFromCloud();
+    });
+
+    window.addEventListener("online", () => {
+      if (cloud.dirty) uploadCsv();
+      else loadFromCloud();
+    });
+
+    window.addEventListener("pagehide", () => {
+      if (cloud.dirty) uploadCsv();
+    });
+
+    document.querySelector("#addButton").addEventListener("click", addRow);
+    document.querySelector("#exportButton").addEventListener("click", exportCsv);
+
+    render();
+    initCloud();
+  </script>
 </body>
 </html>
