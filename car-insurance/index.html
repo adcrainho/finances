@@ -636,8 +636,8 @@
     const ONEDRIVE_CONFIG = {
       clientId: "COLOCAR_AQUI_O_CLIENT_ID",
       authority: "https://login.microsoftonline.com/consumers",
-      // Relative to the app's own OneDrive folder (Apps/finances); the page cannot access anything else.
-      filePath: "car-insurance.csv",
+      // Relative to the app's isolated OneDrive folder (Apps/9_WebApplications_Data); the page cannot access anything else.
+      filePath: "car_insurance/car_insurance.csv",
       scopes: ["Files.ReadWrite.AppFolder", "User.Read"]
     };
 
@@ -1153,8 +1153,13 @@
         const token = await getToken();
         const response = await fetch(graphFileUrl(), { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" });
         if (response.status === 404) {
-          if (rows.some((row) => !row.isNew)) await uploadCsv();
-          else setStatus("O ficheiro ainda não existe no OneDrive · será criado ao guardar a primeira linha.");
+          if (rows.some((row) => !row.isNew)) {
+            await uploadCsv();
+          } else {
+            // Make sure the isolated app folder exists so it syncs to the PC.
+            await fetch("https://graph.microsoft.com/v1.0/me/drive/special/approot", { headers: { Authorization: `Bearer ${token}` } });
+            setStatus(`Ficheiro não encontrado em Aplicações/9_WebApplications_Data/${ONEDRIVE_CONFIG.filePath} · será criado ao guardar a primeira linha.`);
+          }
           return;
         }
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
