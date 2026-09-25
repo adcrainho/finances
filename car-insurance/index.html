@@ -589,11 +589,11 @@
 
     <section class="card">
       <div class="toolbar">
-        <span class="status" id="saveStatus">A carregar…</span>
+        <span class="status" id="saveStatus">Loading…</span>
         <div class="actions">
           <span class="account-info" id="accountInfo" hidden></span>
-          <button type="button" id="signInButton" hidden>Entrar com Microsoft</button>
-          <button type="button" id="signOutButton" hidden>Sair</button>
+          <button type="button" id="signInButton" hidden>Sign in with Microsoft</button>
+          <button type="button" id="signOutButton" hidden>Sign out</button>
           <button type="button" id="exportButton">Export CSV</button>
           <button type="button" class="primary" id="addButton">+ Add line</button>
         </div>
@@ -1013,10 +1013,10 @@
         scheduleUpload();
         return;
       }
-      setStatus("A guardar…");
+      setStatus("Saving…");
       clearTimeout(saveTimer);
       saveTimer = setTimeout(() => {
-        setStatus(cloud.msal ? "Guardado só neste aparelho · entra para sincronizar com o OneDrive." : "Guardado neste aparelho.");
+        setStatus(cloud.msal ? "Saved on this device only · sign in to sync with OneDrive." : "Saved on this device.");
       }, 350);
     }
 
@@ -1148,9 +1148,12 @@
 
     async function loadFromCloud() {
       if (!cloud.account || cloud.dirty || cloud.uploading) return;
-      setStatus("A ler do OneDrive…");
+      setStatus("Loading from OneDrive…");
       try {
         const token = await getToken();
+        // Accessing approot first makes OneDrive create the isolated app folder if it doesn't exist yet.
+        const folderResponse = await fetch("https://graph.microsoft.com/v1.0/me/drive/special/approot", { headers: { Authorization: "Bearer " + token } });
+        if (!folderResponse.ok) throw new Error(await describeGraphError(folderResponse, "folder"));
         const response = await fetch(graphFileUrl(), { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" });
         if (response.status === 404) {
           if (rows.some((row) => !row.isNew)) {
@@ -1158,26 +1161,35 @@
           } else {
             // Make sure the isolated app folder exists so it syncs to the PC.
             await fetch("https://graph.microsoft.com/v1.0/me/drive/special/approot", { headers: { Authorization: `Bearer ${token}` } });
-            setStatus(`Ficheiro não encontrado em Aplicações/Car_Insurance/${ONEDRIVE_CONFIG.filePath} · será criado ao guardar a primeira linha.`);
+            setStatus(`File not found in Apps/Car_Insurance/${ONEDRIVE_CONFIG.filePath} · it will be created when the first line is saved.`);
           }
           return;
         }
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        if (!response.ok) throw new Error(await describeGraphError(response, "file"));
         const cloudRows = parseCsv(await response.text());
         if (cloud.dirty || isEditing()) return;
         rows = cloudRows;
         localStorage.setItem(STORAGE_KEY, JSON.stringify(rows));
         render();
-        setStatus("Sincronizado com o OneDrive ✓", "ok");
+        setStatus("Synced with OneDrive ✓", "ok");
       } catch (error) {
         console.error(error);
-        setStatus("Não foi possível ler do OneDrive · a mostrar a última cópia deste aparelho.", "error");
+        setStatus(`Could not load from OneDrive (${error.message || error.errorCode || error}) · showing the last copy on this device.`, "error");
       }
+    }
+
+    async function describeGraphError(response, what) {
+      let detail = "";
+      try {
+        const data = await response.json();
+        detail = data?.error?.code ? ` ${data.error.code}: ${data.error.message}` : "";
+      } catch {}
+      return `${what} HTTP ${response.status}${detail}`;
     }
 
     function scheduleUpload() {
       cloud.dirty = true;
-      setStatus("A guardar no OneDrive…");
+      setStatus("Saving to OneDrive…");
       clearTimeout(cloud.uploadTimer);
       cloud.uploadTimer = setTimeout(uploadCsv, 800);
     }
@@ -1197,13 +1209,13 @@
           headers: { Authorization: `Bearer ${token}`, "Content-Type": "text/csv" },
           body: buildCsv(rows.filter((row) => !row.isNew))
         });
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        const time = new Date().toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" });
-        setStatus(`Guardado no OneDrive ✓ (${time})`, "ok");
+        if (!response.ok) throw new Error(await describeGraphError(response, "save"));
+        const time = new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+        setStatus(`Saved to OneDrive ✓ (${time})`, "ok");
       } catch (error) {
         console.error(error);
         cloud.dirty = true;
-        setStatus("Erro ao guardar no OneDrive · nova tentativa em 15 s (os dados estão guardados neste aparelho).", "error");
+        setStatus("Error saving to OneDrive · retrying in 15 s (data is saved on this device).", "error");
         clearTimeout(cloud.uploadTimer);
         cloud.uploadTimer = setTimeout(uploadCsv, 15000);
       } finally {
@@ -1217,15 +1229,15 @@
 
     async function initCloud() {
       if (location.protocol === "file:") {
-        setStatus("Modo local · abre a versão online para sincronizar com o OneDrive.");
+        setStatus("Local mode · open the online version to sync with OneDrive.");
         return;
       }
       if (!window.msal) {
-        setStatus("Sem ligação ao serviço Microsoft · dados guardados neste aparelho.", "error");
+        setStatus("Cannot reach Microsoft sign-in service · data saved on this device.", "error");
         return;
       }
       if (!ONEDRIVE_CONFIG.clientId || ONEDRIVE_CONFIG.clientId.startsWith("COLOCAR")) {
-        setStatus("OneDrive não configurado (falta o client ID) · dados guardados neste aparelho.", "error");
+        setStatus("OneDrive not configured (missing client ID) · data saved on this device.", "error");
         return;
       }
       try {
@@ -1242,11 +1254,11 @@
         cloud.account = result?.account || cloud.msal.getAllAccounts()[0] || null;
         updateAuthUi();
         if (cloud.account) await loadFromCloud();
-        else setStatus("Entra com a tua conta Microsoft para usar os dados do OneDrive.");
+        else setStatus("Sign in with your Microsoft account to use the OneDrive data.");
       } catch (error) {
         console.error(error);
         updateAuthUi();
-        setStatus("Erro no login Microsoft · dados guardados neste aparelho.", "error");
+        setStatus("Microsoft sign-in error · data saved on this device.", "error");
       }
     }
 
