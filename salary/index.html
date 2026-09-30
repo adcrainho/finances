@@ -1,0 +1,1266 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Salary Account</title>
+  <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.28.1/lib/msal-browser.min.js" integrity="sha384-B5PXeUfgiegchZiX5iMRssMrHd9NfPhFnITob1HyW1CY76udptWpBsniaDsH/+BY" crossorigin="anonymous"></script>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #172033;
+      --muted: #667085;
+      --accent: #1c69d4;
+      --accent-dark: #1556b4;
+      --positive: #087443;
+      --negative: #b42318;
+      --line: #e5e9f0;
+      --soft: #f5f7fa;
+      --panel: #fff;
+      --shadow: 0 16px 40px rgba(23, 32, 51, 0.08);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: #f3f6fb;
+      color: var(--ink);
+      font-family: Inter, "Segoe UI", Roboto, Arial, sans-serif;
+    }
+
+    .page {
+      width: min(100% - 36px, 1320px);
+      margin: 38px auto;
+    }
+
+    .hero {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 24px;
+      margin-bottom: 22px;
+    }
+
+    .eyebrow {
+      margin: 0 0 7px;
+      color: var(--accent);
+      font-size: 0.76rem;
+      font-weight: 800;
+      letter-spacing: 0.13em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(1.8rem, 4vw, 3.25rem);
+      letter-spacing: -0.045em;
+      line-height: 1;
+    }
+
+    .subtitle {
+      margin: 10px 0 0;
+      color: var(--muted);
+    }
+
+    .hero-side {
+      display: flex;
+      align-items: center;
+    }
+
+    .account {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 6px;
+    }
+
+    .account-info {
+      color: var(--muted);
+      font-size: 0.8rem;
+    }
+
+    [hidden] { display: none !important; }
+
+    .card {
+      overflow: hidden;
+      border: 1px solid rgba(23, 32, 51, 0.08);
+      border-radius: 20px;
+      background: var(--panel);
+      box-shadow: var(--shadow);
+    }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: nowrap;
+      align-items: center;
+      gap: 12px;
+      padding: 16px 18px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .status {
+      flex: 1 1 auto;
+      min-width: 0;
+      color: var(--muted);
+      font-size: 0.88rem;
+    }
+
+    .status[data-state="ok"] { color: var(--positive); }
+    .status[data-state="error"] { color: var(--negative); }
+
+    .actions {
+      display: flex;
+      flex: 0 0 auto;
+      flex-wrap: nowrap;
+      gap: 9px;
+      margin-left: auto;
+    }
+
+    button {
+      min-height: 40px;
+      padding: 0 15px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #fff;
+      color: var(--ink);
+      cursor: pointer;
+      font: inherit;
+      font-weight: 700;
+      white-space: nowrap;
+      transition: 140ms ease;
+    }
+
+    button:hover {
+      border-color: #aeb8c7;
+      background: var(--soft);
+      transform: translateY(-1px);
+    }
+
+    button.primary {
+      border-color: var(--accent);
+      background: var(--accent);
+      color: #fff;
+    }
+
+    button.primary:hover {
+      border-color: var(--accent-dark);
+      background: var(--accent-dark);
+    }
+
+    button.icon {
+      width: 34px;
+      min-height: 34px;
+      padding: 0;
+      border-color: transparent;
+      background: transparent;
+      color: #98a2b3;
+      font-size: 1.15rem;
+    }
+
+    button.icon:hover {
+      color: var(--negative);
+      background: #fff1f0;
+    }
+
+    button.icon.edit-icon:hover,
+    button.icon.edit-icon.active {
+      color: var(--accent);
+      background: rgba(28, 105, 212, 0.08);
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+      overscroll-behavior-x: contain;
+    }
+
+    table {
+      width: 100%;
+      min-width: 2100px;
+      border-collapse: separate;
+      border-spacing: 0;
+      font-size: 0.86rem;
+      font-variant-numeric: tabular-nums;
+    }
+
+    th, td {
+      padding: 12px 10px;
+      border-bottom: 1px solid var(--line);
+      text-align: center;
+      vertical-align: middle;
+    }
+
+    th {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      background: #f8f9fc;
+      color: #344054;
+      font-size: 0.74rem;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      line-height: 1.3;
+      text-transform: uppercase;
+    }
+
+    tbody tr:last-child td { border-bottom: 0; }
+    tbody tr:hover { background: #fbfcfe; }
+
+    .period-col { width: 94px; min-width: 94px; }
+    .semester-col { width: 112px; min-width: 112px; }
+    .amount-col { min-width: 112px; }
+    .computed-col { min-width: 128px; }
+    .delta-col { min-width: 145px; }
+    .annual-col { min-width: 140px; }
+    .actions-col { min-width: 98px; }
+
+    .field {
+      width: 100%;
+      min-width: 72px;
+      min-height: 36px;
+      padding: 5px 7px;
+      border: 1px solid transparent;
+      border-radius: 8px;
+      outline: 0;
+      background: transparent;
+      color: var(--ink);
+      font: inherit;
+      font-variant-numeric: tabular-nums;
+      text-align: center;
+    }
+
+    .currency-input {
+      display: inline-flex;
+      align-items: center;
+      width: max-content;
+      max-width: 100%;
+      min-height: 36px;
+      margin: 0 auto;
+      border: 1px solid transparent;
+      border-radius: 8px;
+    }
+
+    .currency-input:focus-within {
+      border-color: rgba(28, 105, 212, 0.55);
+      background: #fff;
+      box-shadow: 0 0 0 3px rgba(28, 105, 212, 0.1);
+    }
+
+    .currency-prefix {
+      flex: 0 0 auto;
+      order: 1;
+      color: var(--ink);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .currency-field {
+      flex: 0 1 auto;
+      width: 1ch;
+      min-width: 0;
+      min-height: 30px;
+      padding: 0;
+      border: 0;
+      background: transparent;
+      text-align: right;
+    }
+
+    .currency-field:focus {
+      border: 0;
+      background: transparent;
+      box-shadow: none;
+    }
+
+    .field:focus {
+      border-color: rgba(28, 105, 212, 0.55);
+      background: #fff;
+      box-shadow: 0 0 0 3px rgba(28, 105, 212, 0.1);
+    }
+
+    .locked .field { cursor: default; }
+    .locked .field:focus { border-color: transparent; box-shadow: none; }
+    .computed { color: #25324a; font-weight: 700; white-space: nowrap; }
+    .delta-positive { color: var(--positive); }
+    .delta-negative { color: var(--negative); }
+    .muted-value { color: #98a2b3; }
+    th.monthly-change { color: #087443; }
+    th.annual-change { color: #174ea6; }
+    .row-actions { display: flex; justify-content: center; gap: 2px; }
+    .row-actions .confirm { color: var(--positive); }
+    .row-actions .confirm:hover { background: #ecfdf3; }
+    .row-actions .cancel:hover { color: var(--negative); background: #fff1f0; }
+
+    tbody tr.semester-1 { background: #f2f4f7; }
+    tbody tr.semester-2 { background: #fff; }
+    tbody tr.semester-1:hover { background: #e9edf2; }
+    tbody tr.semester-2:hover { background: #fbfcfe; }
+
+    th.sticky-period,
+    td.sticky-period,
+    th.sticky-semester,
+    td.sticky-semester {
+      position: sticky;
+      z-index: 2;
+    }
+
+    th.sticky-period,
+    td.sticky-period { left: 0; }
+    th.sticky-semester,
+    td.sticky-semester { left: 94px; box-shadow: 2px 0 4px rgba(23, 32, 51, 0.08); }
+
+    th.sticky-period,
+    th.sticky-semester { z-index: 4; background: #f8f9fc; }
+    tr.semester-1 td.sticky-period,
+    tr.semester-1 td.sticky-semester { background: #f2f4f7; }
+    tr.semester-2 td.sticky-period,
+    tr.semester-2 td.sticky-semester { background: #fff; }
+    tr.semester-1:hover td.sticky-period,
+    tr.semester-1:hover td.sticky-semester { background: #e9edf2; }
+    tr.semester-2:hover td.sticky-period,
+    tr.semester-2:hover td.sticky-semester { background: #fbfcfe; }
+
+    .chart-card {
+      margin-top: 20px;
+      padding: 20px 22px 16px;
+      border: 1px solid rgba(23, 32, 51, 0.08);
+      border-radius: 20px;
+      background: var(--panel);
+      box-shadow: var(--shadow);
+    }
+
+    .chart-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      margin-bottom: 12px;
+    }
+
+    .chart-header h2 { margin: 0; font-size: 1.05rem; }
+
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px;
+      color: var(--muted);
+      font-size: 0.82rem;
+    }
+
+    .legend span { display: inline-flex; align-items: center; gap: 7px; }
+    .legend i { width: 18px; height: 3px; border-radius: 4px; }
+    .legend .monthly { background: #1c69d4; }
+    .legend .including { background: #0f9d58; }
+
+    #salaryChart {
+      display: block;
+      width: 100%;
+      height: auto;
+      overflow: visible;
+    }
+
+    .chart-grid { stroke: #e8edf4; stroke-width: 1; }
+    .chart-axis-label { fill: #667085; font-size: 12px; }
+    .chart-line-monthly, .chart-line-including {
+      fill: none;
+      stroke-width: 3;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .chart-line-monthly { stroke: #1c69d4; }
+    .chart-line-including { stroke: #0f9d58; }
+    .chart-point-monthly { fill: #1c69d4; stroke: #fff; stroke-width: 2; }
+    .chart-point-including { fill: #0f9d58; stroke: #fff; stroke-width: 2; }
+    .chart-point-monthly,
+    .chart-point-including { cursor: help; }
+
+    .empty-chart {
+      fill: #667085;
+      font-size: 14px;
+      text-anchor: middle;
+    }
+
+    @media (max-width: 720px) {
+      .page { width: min(100% - 20px, 1320px); margin: 24px auto; }
+      .hero { align-items: stretch; flex-direction: column; }
+      .hero-side { justify-content: flex-end; }
+      .account { flex-direction: row; align-items: center; }
+      .toolbar { align-items: stretch; flex-direction: column; }
+      .actions { margin-left: 0; }
+      .actions button { flex: 1; }
+      .chart-card { padding: 17px 14px 13px; }
+      .chart-header { align-items: flex-start; flex-direction: column; }
+    }
+
+    @media print {
+      body { background: #fff; }
+      .page { width: 100%; margin: 0; }
+      .toolbar, .row-actions { display: none; }
+      .card, .chart-card { border: 0; box-shadow: none; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header class="hero">
+      <div>
+        <p class="eyebrow">Salary overview</p>
+        <h1>Salary account</h1>
+        <p class="subtitle">Compare each period with the previous period and the same period last year.</p>
+      </div>
+      <div class="hero-side">
+        <div class="account" id="accountBox" hidden>
+          <span class="account-info" id="accountInfo" hidden></span>
+          <button type="button" id="signInButton" hidden>Sign in with Microsoft</button>
+          <button type="button" id="signOutButton" hidden>Sign out</button>
+        </div>
+      </div>
+    </header>
+
+    <section class="card">
+      <div class="toolbar">
+        <span class="status" id="saveStatus">Loading salary data…</span>
+        <div class="actions">
+          <button type="button" id="exportButton">Export CSV</button>
+          <button type="button" class="primary" id="addButton">+ Add period</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th class="period-col sticky-period">Year</th>
+              <th class="semester-col sticky-semester">Semester</th>
+              <th class="amount-col">Base</th>
+              <th class="amount-col">Exemption Hours</th>
+              <th class="amount-col">Function</th>
+              <th class="amount-col">Flex</th>
+              <th class="computed-col">Monthly total</th>
+              <th class="amount-col">Meal allowance</th>
+              <th class="computed-col">Monthly incl.<br>meal allowance</th>
+              <th class="delta-col monthly-change">Monthly change<br>vs previous period</th>
+              <th class="delta-col monthly-change">Monthly change<br>vs same period last year</th>
+              <th class="annual-col">Annual base<br>(14 payments)</th>
+              <th class="annual-col">Annual total</th>
+              <th class="delta-col annual-change">Annual change<br>vs previous period</th>
+              <th class="delta-col annual-change">Annual change<br>vs same period last year</th>
+              <th class="amount-col">Annual bonus</th>
+              <th class="delta-col annual-change">Annual bonus change<br>vs previous period</th>
+              <th class="annual-col">Annual total<br>incl. bonus</th>
+              <th class="delta-col annual-change">Annual total change<br>vs previous period</th>
+              <th class="actions-col">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="chart-card">
+      <div class="chart-header">
+        <h2>Monthly salary over time</h2>
+        <div class="legend" aria-label="Chart legend">
+          <span><i class="monthly"></i>Monthly total</span>
+          <span><i class="including"></i>Monthly incl. meal allowance</span>
+        </div>
+      </div>
+      <svg id="salaryChart" viewBox="0 0 900 340" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Monthly salary by period"></svg>
+    </section>
+  </main>
+
+  <script>
+    const ONEDRIVE_CONFIG = {
+      clientId: "941344c6-c92e-403a-afcd-9c50b07c9d23",
+      authority: "https://login.microsoftonline.com/consumers",
+      fileName: "salary_account.csv",
+      scopes: ["Files.ReadWrite.AppFolder", "User.Read"]
+    };
+    const STORAGE_KEY = "salary-account-v1";
+    const CSV_FIELDS = ["Period", "Base", "ExemptionHours", "Function", "Flex", "MealAllowance", "AnnualBonus"];
+    const INITIAL_ROWS = [];
+
+    const body = document.querySelector("#tableBody");
+    const status = document.querySelector("#saveStatus");
+    const numberFormat = new Intl.NumberFormat("en-IE", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    });
+    const cloud = {
+      msal: null,
+      account: null,
+      appFolderId: null,
+      loaded: false,
+      dirty: false,
+      uploadTimer: 0,
+      uploading: false,
+      pending: false
+    };
+    const rowElements = new Map();
+    let rows = loadRows();
+    const signInButton = document.querySelector("#signInButton");
+    const signOutButton = document.querySelector("#signOutButton");
+    const accountInfo = document.querySelector("#accountInfo");
+
+    function loadRows() {
+      try {
+        const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+        return Array.isArray(saved) ? saved.map(normalizeRow) : structuredClone(INITIAL_ROWS).map(normalizeRow);
+      } catch (error) {
+        console.error("Could not load local salary data.", error);
+        return structuredClone(INITIAL_ROWS).map(normalizeRow);
+      }
+    }
+
+    function normalizeRow(row) {
+      return {
+        period: String(row.period ?? ""),
+        base: String(row.base ?? ""),
+        schedule: String(row.schedule ?? ""),
+        role: String(row.role ?? ""),
+        flex: String(row.flex ?? ""),
+        meal: String(row.meal ?? ""),
+        bonus: String(row.bonus ?? ""),
+        locked: row.locked !== false,
+        ...(row.isNew ? { isNew: true } : {})
+      };
+    }
+
+    function setStatus(message, state = "") {
+      status.textContent = message;
+      status.dataset.state = state;
+    }
+
+    function numeric(value) {
+      const text = String(value ?? "").trim().replace(",", ".");
+      if (!text) return null;
+      const result = Number(text);
+      return Number.isFinite(result) ? result : null;
+    }
+
+    function amount(value) {
+      return Number.isFinite(value) ? `${numberFormat.format(value)}€` : "—";
+    }
+
+    function sumFields(row, fields) {
+      const values = fields.map((field) => numeric(row[field]));
+      return values.some((value) => value !== null)
+        ? values.reduce((total, value) => total + (value ?? 0), 0)
+        : null;
+    }
+
+    function monthlyTotal(row) {
+      return sumFields(row, ["base", "schedule", "role", "flex"]);
+    }
+
+    function monthlyIncludingMeal(row) {
+      const total = monthlyTotal(row);
+      const meal = numeric(row.meal);
+      return total === null && meal === null ? null : (total ?? 0) + (meal ?? 0);
+    }
+
+    function annualBase(row) {
+      const total = monthlyTotal(row);
+      return total === null ? null : total * 14;
+    }
+
+    function annualTotal(row) {
+      const base = annualBase(row);
+      const meal = numeric(row.meal);
+      return base === null && meal === null ? null : (base ?? 0) + (meal ?? 0) * 11;
+    }
+
+    function annualWithBonus(row) {
+      const total = annualTotal(row);
+      const bonus = numeric(row.bonus);
+      return total === null && bonus === null ? null : (total ?? 0) + (bonus ?? 0);
+    }
+
+    function periodKey(period) {
+      const match = String(period).match(/^(\d{4})_([12])$/);
+      return match ? Number(match[1]) * 2 + Number(match[2]) - 1 : Number.MAX_SAFE_INTEGER;
+    }
+
+    function sortedRows() {
+      return [...rows].sort((a, b) => periodKey(a.period) - periodKey(b.period));
+    }
+
+    function difference(current, previous) {
+      return current === null || previous === null ? null : current - previous;
+    }
+
+    function periodValidation(sourceRows) {
+      const periods = sourceRows.filter((row) => !row.isNew).map((row) => row.period);
+      if (periods.some((period) => !/^\d{4}_[12]$/.test(period))) {
+        return "Use the period format YYYY_1 or YYYY_2 before syncing.";
+      }
+      if (new Set(periods).size !== periods.length) return "Each period must be unique before syncing.";
+      return "";
+    }
+
+    function previousPeriodDiff(row, getter) {
+      const sorted = sortedRows();
+      const index = sorted.findIndex((item) => item === row);
+      return index > 0 ? difference(getter(row), getter(sorted[index - 1])) : null;
+    }
+
+    function homologousDiff(row, getter) {
+      const match = String(row.period).match(/^(\d{4})_([12])$/);
+      if (!match) return null;
+      const previousYearPeriod = `${Number(match[1]) - 1}_${match[2]}`;
+      const previous = rows.find((item) => item.period === previousYearPeriod);
+      return previous ? difference(getter(row), getter(previous)) : null;
+    }
+
+    function deltaText(value) {
+      if (value === null) return "—";
+      const sign = value > 0 ? "+" : value < 0 ? "−" : "";
+      return `${sign}${numberFormat.format(Math.abs(value))}€`;
+    }
+
+    function setDelta(element, value) {
+      element.textContent = deltaText(value);
+      element.classList.toggle("delta-positive", value > 0);
+      element.classList.toggle("delta-negative", value < 0);
+      element.classList.toggle("muted-value", value === null);
+    }
+
+    function makeInput(row, key, label) {
+      const wrapper = document.createElement("span");
+      wrapper.className = "currency-input";
+      const prefix = document.createElement("span");
+      prefix.className = "currency-prefix";
+      prefix.textContent = "€";
+      const input = document.createElement("input");
+      input.className = "field currency-field";
+      input.type = "text";
+      input.inputMode = "decimal";
+      input.value = row.isNew || !row.locked
+        ? row[key]
+        : numeric(row[key]) === null ? "" : numeric(row[key]).toFixed(2);
+      fitCurrencyInput(input);
+      input.readOnly = !row.isNew && row.locked;
+      input.setAttribute("aria-label", `${label} for ${row.period || "new period"}`);
+      wrapper.append(prefix, input);
+      input.addEventListener("input", () => {
+        row[key] = input.value;
+        fitCurrencyInput(input);
+        updateComputed();
+        save();
+      });
+      input.addEventListener("blur", () => {
+        const value = numeric(row[key]);
+        if (value !== null) {
+          row[key] = value.toFixed(2);
+          input.value = row[key];
+          fitCurrencyInput(input);
+          updateComputed();
+          save();
+        }
+      });
+      return wrapper;
+    }
+
+    function fitCurrencyInput(input) {
+      input.style.width = `${Math.max(1, input.value.length) + 0.3}ch`;
+    }
+
+    function makePeriodFields(row) {
+      const yearCell = document.createElement("td");
+      yearCell.className = "sticky-period";
+      const yearInput = document.createElement("input");
+      yearInput.className = "field";
+      yearInput.type = "text";
+      yearInput.inputMode = "numeric";
+      yearInput.maxLength = 4;
+      yearInput.value = row.period.match(/^(\d{4})_[12]$/)?.[1] ?? "";
+      yearInput.readOnly = !row.isNew && row.locked;
+      yearInput.setAttribute("aria-label", `Year for ${row.period || "new period"}`);
+
+      const semesterCell = document.createElement("td");
+      semesterCell.className = "sticky-semester";
+      const semesterSelect = document.createElement("select");
+      semesterSelect.className = "field";
+      semesterSelect.setAttribute("aria-label", `Semester for ${row.period || "new period"}`);
+      for (const [value, label] of [["1", "1st semester"], ["2", "2nd semester"]]) {
+        const option = document.createElement("option");
+        option.value = value;
+        option.textContent = label;
+        semesterSelect.append(option);
+      }
+      const match = row.period.match(/^\d{4}_([12])$/);
+      semesterSelect.value = match?.[1] ?? "1";
+      semesterSelect.disabled = !row.isNew && row.locked;
+
+      const updatePeriod = () => {
+        const year = yearInput.value.trim();
+        row.period = /^\d{4}$/.test(year) ? `${year}_${semesterSelect.value}` : year;
+        yearInput.setAttribute("aria-label", `Year for ${row.period || "new period"}`);
+        semesterSelect.setAttribute("aria-label", `Semester for ${row.period || "new period"}`);
+        renderRowClass(row);
+        updateComputed();
+        save();
+      };
+      yearInput.addEventListener("input", updatePeriod);
+      semesterSelect.addEventListener("change", updatePeriod);
+      yearCell.append(yearInput);
+      semesterCell.append(semesterSelect);
+      return [yearCell, semesterCell];
+    }
+
+    function renderRowClass(row) {
+      const tr = rowElements.get(row);
+      if (!tr) return;
+      tr.classList.toggle("semester-1", row.period.endsWith("_1"));
+      tr.classList.toggle("semester-2", row.period.endsWith("_2"));
+    }
+
+    function computedCell(value, className = "") {
+      const cell = document.createElement("td");
+      cell.className = `computed ${className}`.trim();
+      cell.textContent = amount(value);
+      return cell;
+    }
+
+    function deltaCell(value) {
+      const cell = document.createElement("td");
+      cell.className = "computed";
+      setDelta(cell, value);
+      return cell;
+    }
+
+    function render() {
+      body.replaceChildren();
+      rowElements.clear();
+      for (const row of sortedRows()) {
+        const tr = document.createElement("tr");
+        tr.classList.toggle("locked", !row.isNew && row.locked);
+        renderRowClass(row);
+        const [yearCell, semesterCell] = makePeriodFields(row);
+        tr.append(yearCell, semesterCell);
+
+        for (const [key, label] of [
+          ["base", "Base salary"],
+          ["schedule", "Exemption hours"],
+          ["role", "Function amount"],
+          ["flex", "Flex amount"]
+        ]) {
+          const cell = document.createElement("td");
+          cell.append(makeInput(row, key, label));
+          tr.append(cell);
+        }
+        tr.append(computedCell(monthlyTotal(row)));
+
+        const mealCell = document.createElement("td");
+        mealCell.append(makeInput(row, "meal", "Meal allowance"));
+        tr.append(mealCell);
+
+        tr.append(computedCell(monthlyIncludingMeal(row)));
+        tr.append(deltaCell(previousPeriodDiff(row, monthlyIncludingMeal)));
+        tr.append(deltaCell(homologousDiff(row, monthlyIncludingMeal)));
+        tr.append(computedCell(annualBase(row)));
+        tr.append(computedCell(annualTotal(row)));
+        tr.append(deltaCell(previousPeriodDiff(row, annualTotal)));
+        tr.append(deltaCell(homologousDiff(row, annualTotal)));
+
+        const bonusCell = document.createElement("td");
+        bonusCell.append(makeInput(row, "bonus", "Annual bonus"));
+        tr.append(bonusCell);
+
+        tr.append(deltaCell(previousPeriodDiff(row, (item) => numeric(item.bonus))));
+        tr.append(computedCell(annualWithBonus(row)));
+        tr.append(deltaCell(previousPeriodDiff(row, annualWithBonus)));
+
+        const actionCell = document.createElement("td");
+        const actions = document.createElement("div");
+        actions.className = "row-actions";
+        if (row.isNew) {
+          const confirm = actionButton("✓", "Save period", "confirm", () => {
+            if (!/^\d{4}_[12]$/.test(row.period)) {
+              setStatus("Use the period format YYYY_1 or YYYY_2.", "error");
+              return;
+            }
+            if (rows.some((item) => item !== row && item.period === row.period)) {
+              setStatus("That period already exists.", "error");
+              return;
+            }
+            row.locked = true;
+            delete row.isNew;
+            render();
+            save();
+          });
+          const cancel = actionButton("×", "Discard period", "cancel", () => {
+            rows = rows.filter((item) => item !== row);
+            render();
+            save();
+          });
+          actions.append(confirm, cancel);
+        } else {
+          const edit = actionButton("✎", row.locked ? "Edit period" : "Save period", "edit-icon", () => {
+            if (row.locked) {
+              row.locked = false;
+            } else {
+              if (!/^\d{4}_[12]$/.test(row.period)) {
+                setStatus("Use the period format YYYY_1 or YYYY_2.", "error");
+                return;
+              }
+              if (rows.some((item) => item !== row && item.period === row.period)) {
+                setStatus("That period already exists.", "error");
+                return;
+              }
+              row.locked = true;
+            }
+            render();
+            save();
+          });
+          edit.classList.toggle("active", !row.locked);
+          const remove = actionButton("×", "Delete period", "cancel", () => {
+            if (!window.confirm(`Delete ${row.period}? This also removes it from the connected CSV.`)) return;
+            rows = rows.filter((item) => item !== row);
+            render();
+            save();
+          });
+          actions.append(edit, remove);
+        }
+        actionCell.append(actions);
+        tr.append(actionCell);
+        body.append(tr);
+        rowElements.set(row, tr);
+        renderRowClass(row);
+      }
+      updateComputed();
+    }
+
+    function actionButton(text, label, className, callback) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = `icon ${className}`;
+      button.textContent = text;
+      button.setAttribute("aria-label", label);
+      button.title = label;
+      button.addEventListener("click", callback);
+      return button;
+    }
+
+    function updateComputed() {
+      const currentRows = sortedRows();
+      for (const row of currentRows) {
+        const tr = rowElements.get(row);
+        if (!tr) continue;
+        const values = [
+          monthlyTotal(row), monthlyIncludingMeal(row),
+          previousPeriodDiff(row, monthlyIncludingMeal), homologousDiff(row, monthlyIncludingMeal),
+          annualBase(row), annualTotal(row), previousPeriodDiff(row, annualTotal),
+          homologousDiff(row, annualTotal), previousPeriodDiff(row, (item) => numeric(item.bonus)),
+          annualWithBonus(row), previousPeriodDiff(row, annualWithBonus)
+        ];
+        const cells = [6, 8, 9, 10, 11, 12, 13, 14, 16, 17, 18].map((index) => tr.cells[index]);
+        cells.forEach((cell, index) => {
+          if ([2, 3, 6, 7, 8, 10].includes(index)) setDelta(cell, values[index]);
+          else cell.textContent = amount(values[index]);
+        });
+      }
+      const valid = currentRows.filter((row) => /^\d{4}_[12]$/.test(row.period) && monthlyIncludingMeal(row) !== null);
+      renderChart(valid);
+    }
+
+    function renderChart(chartRows) {
+      const svg = document.querySelector("#salaryChart");
+      svg.replaceChildren();
+      const points = chartRows.map((row) => ({
+        period: row.period,
+        base: monthlyTotal(row),
+        total: monthlyIncludingMeal(row)
+      })).filter((point) => point.base !== null || point.total !== null);
+
+      if (!points.length) {
+        const empty = svgElement("text", { x: 450, y: 170, class: "empty-chart" });
+        empty.textContent = "Add salary periods to see the chart.";
+        svg.append(empty);
+        return;
+      }
+
+      const width = 900;
+      const height = 340;
+      const margin = { top: 22, right: 56, bottom: 48, left: 78 };
+      const values = points.flatMap((point) => [point.base, point.total]).filter(Number.isFinite);
+      const minValue = Math.min(...values);
+      const maxValue = Math.max(...values);
+      const padding = (maxValue - minValue) * 0.12 || 1;
+      const low = minValue - padding;
+      const high = maxValue + padding;
+      const rawStep = (high - low) / 4;
+      const magnitude = 10 ** Math.floor(Math.log10(rawStep));
+      const normalizedStep = rawStep / magnitude;
+      const step = Math.max(10, (normalizedStep <= 1 ? 1 : normalizedStep <= 2 ? 2 : normalizedStep <= 5 ? 5 : 10) * magnitude);
+      const firstTick = Math.ceil(low / step) * step;
+      const plotWidth = width - margin.left - margin.right;
+      const plotHeight = height - margin.top - margin.bottom;
+      const x = (index) => points.length === 1
+        ? margin.left + plotWidth / 2
+        : margin.left + (index / (points.length - 1)) * plotWidth;
+      const y = (value) => margin.top + ((high - value) / (high - low)) * plotHeight;
+
+      for (let value = firstTick; value <= high; value += step) {
+        const py = y(value);
+        svg.append(svgElement("line", {
+          x1: margin.left, y1: py, x2: width - margin.right, y2: py, class: "chart-grid"
+        }));
+        const label = svgElement("text", {
+          x: margin.left - 10, y: py + 4, "text-anchor": "end", class: "chart-axis-label"
+        });
+        label.textContent = amount(value);
+        svg.append(label);
+      }
+
+      const draw = (key, lineClass, pointClass, label) => {
+        const segments = [];
+        let segment = [];
+        points.forEach((point, index) => {
+          const value = point[key];
+          if (value === null) {
+            if (segment.length) segments.push(segment);
+            segment = [];
+          } else {
+            segment.push(`${segment.length ? "L" : "M"} ${x(index)} ${y(value)}`);
+          }
+        });
+        if (segment.length) segments.push(segment);
+        for (const commands of segments) {
+          svg.append(svgElement("path", { d: commands.join(" "), class: lineClass }));
+        }
+        points.forEach((point, index) => {
+          if (point[key] === null) return;
+          const circle = svgElement("circle", {
+            cx: x(index), cy: y(point[key]), r: 4.5, class: pointClass,
+            tabindex: 0,
+            "aria-label": `${point.period}: ${label} ${amount(point[key])}`
+          });
+          const tooltip = svgElement("title", {});
+          tooltip.textContent = `${point.period.replace("_", " - ")} · ${label}: ${amount(point[key])}`;
+          circle.append(tooltip);
+          svg.append(circle);
+        });
+      };
+
+      draw("base", "chart-line-monthly", "chart-point-monthly", "Monthly total");
+      draw("total", "chart-line-including", "chart-point-including", "Monthly incl. meal allowance");
+      const stride = Math.max(1, Math.ceil(points.length / 8));
+      points.forEach((point, index) => {
+        if (index % stride !== 0 && index !== points.length - 1) return;
+        const match = point.period.match(/^(\d{4})_([12])$/);
+        const label = svgElement("text", {
+          x: x(index), y: height - margin.bottom + 24, "text-anchor": "middle", class: "chart-axis-label"
+        });
+        label.textContent = match ? `${match[1]} - ${match[2]}` : point.period;
+        svg.append(label);
+      });
+    }
+
+    function svgElement(name, attributes) {
+      const element = document.createElementNS("http://www.w3.org/2000/svg", name);
+      for (const [key, value] of Object.entries(attributes)) element.setAttribute(key, String(value));
+      return element;
+    }
+
+    function escapeCsv(value) {
+      const text = String(value ?? "");
+      return `"${text.replaceAll('"', '""')}"`;
+    }
+
+    function csvText(sourceRows = rows) {
+      const lines = [CSV_FIELDS.map(escapeCsv).join(",")];
+      for (const row of sortedRowsFrom(sourceRows)) {
+        lines.push([
+          row.period, row.base, row.schedule, row.role, row.flex, row.meal, row.bonus
+        ].map(escapeCsv).join(","));
+      }
+      return `\uFEFF${lines.join("\r\n")}`;
+    }
+
+    function sortedRowsFrom(sourceRows) {
+      return [...sourceRows].sort((a, b) => periodKey(a.period) - periodKey(b.period));
+    }
+
+    function parseCsv(text) {
+      const records = [];
+      let record = [];
+      let field = "";
+      let quoted = false;
+      text = text.replace(/^\uFEFF/, "");
+      for (let index = 0; index < text.length; index++) {
+        const char = text[index];
+        if (quoted) {
+          if (char === '"' && text[index + 1] === '"') { field += '"'; index++; }
+          else if (char === '"') quoted = false;
+          else field += char;
+        } else if (char === '"') quoted = true;
+        else if (char === ",") { record.push(field); field = ""; }
+        else if (char === "\n" || char === "\r") {
+          if (char === "\r" && text[index + 1] === "\n") index++;
+          record.push(field); records.push(record); record = []; field = "";
+        } else field += char;
+      }
+      if (field !== "" || record.length) { record.push(field); records.push(record); }
+      if (!records.length) throw new Error("The CSV file is empty.");
+      const headers = records.shift().map((value) => value.trim().toLowerCase());
+      const headerIndex = (...names) => headers.findIndex((header) => names.some((name) => header === name.toLowerCase()));
+      const indexes = {
+        period: headerIndex("Period", "Year-Semester"),
+        year: headerIndex("Year", "Ano"),
+        semester: headerIndex("Semester", "Semestre"),
+        base: headerIndex("Base"),
+        schedule: headerIndex("ExemptionHours", "Schedule", "Horário"),
+        role: headerIndex("Function", "Role", "Função"),
+        flex: headerIndex("Flex"),
+        meal: headerIndex("MealAllowance", "Meal allowance", "Alimen."),
+        bonus: headerIndex("AnnualBonus", "AnnualPayment", "Bonus")
+      };
+      const required = ["base", "schedule", "role", "flex", "meal", "bonus"];
+      if (required.some((name) => indexes[name] < 0) ||
+          (indexes.period < 0 && (indexes.year < 0 || indexes.semester < 0))) {
+        throw new Error(`CSV headers must be: ${CSV_FIELDS.join(", ")}.`);
+      }
+      const imported = records.filter((cells) => cells.some((value) => value.trim() !== "")).map((cells) => {
+        const row = normalizeRow({
+          period: indexes.period >= 0
+            ? cells[indexes.period]
+            : `${cells[indexes.year]}_${cells[indexes.semester]}`,
+          base: cells[indexes.base],
+          schedule: cells[indexes.schedule],
+          role: cells[indexes.role],
+          flex: cells[indexes.flex],
+          meal: cells[indexes.meal],
+          bonus: cells[indexes.bonus]
+        });
+        if (!/^\d{4}_[12]$/.test(row.period)) throw new Error(`Invalid period in CSV: ${row.period}`);
+        for (const field of ["base", "schedule", "role", "flex", "meal", "bonus"]) {
+          if (row[field].trim() !== "" && numeric(row[field]) === null) {
+            throw new Error(`Invalid ${field} amount for ${row.period}: ${row[field]}`);
+          }
+        }
+        return row;
+      });
+      const duplicatePeriod = imported.find((row, index) => imported.findIndex((item) => item.period === row.period) !== index);
+      if (duplicatePeriod) throw new Error(`Duplicate period in CSV: ${duplicatePeriod.period}`);
+      return imported;
+    }
+
+    function persistLocal() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(rows.map(({ isNew, ...row }) => row)));
+    }
+
+    function save() {
+      persistLocal();
+      if (!cloud.account) {
+        setStatus("Saved on this device · sign in to sync with OneDrive.");
+        return;
+      }
+      const invalidPeriods = periodValidation(rows);
+      if (invalidPeriods) {
+        setStatus(`${invalidPeriods} Changes remain saved on this device.`, "error");
+        return;
+      }
+      if (!cloud.loaded) {
+        setStatus("Not saved to OneDrive: cloud data has not loaded yet · reload before editing.", "error");
+        return;
+      }
+      cloud.dirty = true;
+      setStatus("Saving to OneDrive…");
+      clearTimeout(cloud.uploadTimer);
+      cloud.uploadTimer = setTimeout(uploadCsv, 700);
+    }
+
+    function appFolderUrl(token) {
+      return fetch("https://graph.microsoft.com/v1.0/me/drive/special/approot", {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+    }
+
+    async function csvUrl(token, suffix = "") {
+      if (!cloud.appFolderId) {
+        const response = await appFolderUrl(token);
+        if (!response.ok) throw new Error(await graphError(response, "OneDrive app folder"));
+        cloud.appFolderId = (await response.json()).id;
+      }
+      return `https://graph.microsoft.com/v1.0/me/drive/items/${cloud.appFolderId}:/${encodeURIComponent(ONEDRIVE_CONFIG.fileName)}${suffix}`;
+    }
+
+    async function graphError(response, operation) {
+      let details = "";
+      try {
+        const result = await response.json();
+        if (result?.error?.code) details = ` ${result.error.code}: ${result.error.message}`;
+      } catch {}
+      return `${operation} failed (HTTP ${response.status})${details}`;
+    }
+
+    async function accessToken() {
+      const request = { scopes: ONEDRIVE_CONFIG.scopes, account: cloud.account };
+      try {
+        return (await cloud.msal.acquireTokenSilent(request)).accessToken;
+      } catch (error) {
+        if (error instanceof msal.InteractionRequiredAuthError) {
+          await cloud.msal.acquireTokenRedirect({
+            ...request,
+            extraQueryParameters: { ui_locales: "en-US" }
+          });
+        }
+        throw error;
+      }
+    }
+
+    function updateAuthUi() {
+      const signedIn = Boolean(cloud.account);
+      signInButton.hidden = !cloud.msal || signedIn;
+      signOutButton.hidden = !signedIn;
+      accountInfo.hidden = !signedIn;
+      document.querySelector("#accountBox").hidden = signInButton.hidden && !signedIn;
+      accountInfo.textContent = signedIn ? cloud.account.username : "";
+    }
+
+    async function loadFromOneDrive() {
+      if (!cloud.account || cloud.dirty || cloud.uploading) return;
+      setStatus("Loading from OneDrive…");
+      try {
+        const token = await accessToken();
+        const response = await fetch(await csvUrl(token), {
+          headers: { Authorization: `Bearer ${token}` },
+          cache: "no-store"
+        });
+        if (response.status === 404) {
+          cloud.loaded = false;
+          setStatus("Cannot find salary_account.csv in the app folder · keep the existing CSV and check its location before editing.", "error");
+          return;
+        }
+        if (!response.ok) throw new Error(await graphError(response, "Salary CSV"));
+        const metadata = await response.json();
+        const downloadUrl = metadata["@microsoft.graph.downloadUrl"];
+        if (!downloadUrl) throw new Error("OneDrive did not return a download URL for the salary CSV.");
+        const download = await fetch(downloadUrl, { cache: "no-store" });
+        if (!download.ok) throw new Error(`CSV download failed (HTTP ${download.status}).`);
+        const cloudRows = parseCsv(await download.text());
+        if (cloud.dirty || isEditing()) return;
+        rows = cloudRows;
+        cloud.loaded = true;
+        persistLocal();
+        render();
+        setStatus("Synced with OneDrive ✓", "ok");
+      } catch (error) {
+        console.error(error);
+        setStatus(`Could not load from OneDrive (${error.message || error}) · showing this device's saved copy.`, "error");
+      }
+    }
+
+    function isEditing() {
+      return rows.some((row) => row.isNew || !row.locked);
+    }
+
+    async function uploadCsv() {
+      if (!cloud.account || !cloud.loaded) return;
+      if (cloud.uploading) {
+        cloud.pending = true;
+        return;
+      }
+      cloud.uploading = true;
+      cloud.dirty = false;
+      try {
+        const token = await accessToken();
+        const response = await fetch(await csvUrl(token, ":/content"), {
+          method: "PUT",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "text/csv"
+          },
+          body: csvText(rows.filter((row) => !row.isNew))
+        });
+        if (!response.ok) throw new Error(await graphError(response, "Saving salary CSV"));
+        setStatus("Saved to OneDrive ✓", "ok");
+      } catch (error) {
+        console.error(error);
+        cloud.dirty = true;
+        setStatus(`Could not save to OneDrive (${error.message || error}) · data remains on this device.`, "error");
+        clearTimeout(cloud.uploadTimer);
+        cloud.uploadTimer = setTimeout(uploadCsv, 15000);
+      } finally {
+        cloud.uploading = false;
+        if (cloud.pending) {
+          cloud.pending = false;
+          uploadCsv();
+        }
+      }
+    }
+
+    async function initializeMicrosoftLogin() {
+      if (location.protocol === "file:") {
+        setStatus("Open the hosted HTTPS page to sign in and sync with OneDrive.");
+        return;
+      }
+      try {
+        cloud.msal = new msal.PublicClientApplication({
+          auth: {
+            clientId: ONEDRIVE_CONFIG.clientId,
+            authority: ONEDRIVE_CONFIG.authority,
+            redirectUri: `${location.origin}${location.pathname}`
+          },
+          cache: { cacheLocation: "localStorage" }
+        });
+        await cloud.msal.initialize();
+        const result = await cloud.msal.handleRedirectPromise();
+        cloud.account = result?.account || cloud.msal.getAllAccounts()[0] || null;
+        updateAuthUi();
+        if (cloud.account) await loadFromOneDrive();
+        else setStatus("Sign in with your Microsoft account to load the salary data from OneDrive.");
+      } catch (error) {
+        console.error(error);
+        updateAuthUi();
+        setStatus(`Microsoft sign-in initialization failed (${error.message || error}).`, "error");
+      }
+    }
+
+    function exportCsv() {
+      const blob = new Blob([csvText(rows.filter((row) => !row.isNew))], { type: "text/csv;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "salary_account.csv";
+      link.click();
+      setTimeout(() => URL.revokeObjectURL(url), 0);
+    }
+
+    signInButton.addEventListener("click", () => {
+      cloud.msal.loginRedirect({
+        scopes: ONEDRIVE_CONFIG.scopes,
+        prompt: "select_account",
+        extraQueryParameters: { ui_locales: "en-US" }
+      });
+    });
+    signOutButton.addEventListener("click", () => {
+      cloud.msal.logoutRedirect({
+        account: cloud.account,
+        postLogoutRedirectUri: `${location.origin}${location.pathname}`
+      });
+    });
+    document.querySelector("#exportButton").addEventListener("click", exportCsv);
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible" && !cloud.dirty) loadFromOneDrive();
+    });
+    window.addEventListener("online", () => {
+      if (cloud.dirty) uploadCsv();
+      else loadFromOneDrive();
+    });
+    document.querySelector("#addButton").addEventListener("click", () => {
+      const lastPeriod = sortedRows().at(-1)?.period.match(/^(\d{4})_([12])$/);
+      const nextPeriod = lastPeriod
+        ? `${Number(lastPeriod[1]) + (lastPeriod[2] === "2" ? 1 : 0)}_${lastPeriod[2] === "2" ? 1 : 2}`
+        : `${new Date().getFullYear()}_1`;
+      rows.push({ period: nextPeriod, base: "", schedule: "", role: "", flex: "", meal: "", bonus: "", locked: false, isNew: true });
+      render();
+      body.lastElementChild?.scrollIntoView({ behavior: "smooth", block: "center" });
+      body.lastElementChild?.querySelector("input")?.focus();
+      setStatus("Enter the new period values, then save it with ✓.");
+    });
+
+    render();
+    initializeMicrosoftLogin();
+  </script>
+</body>
+</html>

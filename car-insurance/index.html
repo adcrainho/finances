@@ -428,6 +428,14 @@
       color: var(--positive);
     }
 
+    .discount-cell .diff-note.positive {
+      color: var(--positive);
+    }
+
+    .discount-cell .diff-note.negative {
+      color: #f4574d;
+    }
+
     .diff-note.invisible {
       visibility: hidden;
     }
@@ -674,7 +682,7 @@
     const ONEDRIVE_CONFIG = {
       clientId: "941344c6-c92e-403a-afcd-9c50b07c9d23",
       authority: "https://login.microsoftonline.com/consumers",
-      // Relative to the app's isolated OneDrive folder (Apps/Car_Insurance); the page cannot access anything else.
+      // Relative to this app's isolated OneDrive folder; resolve its location through approot.
       filePath: "car_insurance.csv",
       scopes: ["Files.ReadWrite.AppFolder", "User.Read"]
     };
@@ -873,7 +881,7 @@
 
         ["life", "bmw", "discount"].forEach(field => {
           const td = document.createElement("td");
-          td.className = "number";
+          td.className = field === "discount" ? "number discount-cell" : "number";
           const stack = document.createElement("div");
           stack.className = "cell-stack cell-stack-right";
           stack.append(makeCurrencyInput(index, field, !editable));
@@ -1199,9 +1207,8 @@
         const token = await getToken();
         const metaResponse = await fetch(await fileUrl(token), { headers: { Authorization: "Bearer " + token } });
         if (metaResponse.status === 404) {
-          cloud.loaded = true;
-          if (rows.some((row) => !row.isNew)) await uploadCsv();
-          else setStatus(`File not found in Apps/Car_Insurance/${ONEDRIVE_CONFIG.filePath} · it will be created when the first line is saved.`);
+          cloud.loaded = false;
+          setStatus(`Cannot find ${ONEDRIVE_CONFIG.filePath} in the app folder · keep the existing CSV and check its location before editing.`, "error");
           return;
         }
         if (!metaResponse.ok) throw new Error(await describeGraphError(metaResponse, "file"));
