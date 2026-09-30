@@ -80,6 +80,33 @@
       font-size: 0.8rem;
     }
 
+    .account-buttons {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .home-button {
+      box-sizing: border-box;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 40px;
+      height: 40px;
+      flex: 0 0 40px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #fff;
+      color: var(--ink);
+      transition: 140ms ease;
+    }
+
+    .home-button:hover {
+      border-color: #aeb8c7;
+      background: var(--soft);
+      transform: translateY(-1px);
+    }
+
     [hidden] { display: none !important; }
 
     .card {
@@ -408,10 +435,15 @@
         <p class="subtitle">Compare each period with the previous period and the same period last year.</p>
       </div>
       <div class="hero-side">
-        <div class="account" id="accountBox" hidden>
+        <div class="account" id="accountBox">
           <span class="account-info" id="accountInfo" hidden></span>
-          <button type="button" id="signInButton" hidden>Sign in with Microsoft</button>
-          <button type="button" id="signOutButton" hidden>Sign out</button>
+          <div class="account-buttons">
+            <a class="home-button" href="../" title="Back to Finances" aria-label="Back to Finances">
+              <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M19 12H5M11 6l-6 6 6 6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </a>
+            <button type="button" id="signInButton" hidden>Sign in with Microsoft</button>
+            <button type="button" id="signOutButton" hidden>Sign out</button>
+          </div>
         </div>
       </div>
     </header>
@@ -1113,7 +1145,6 @@
       signInButton.hidden = !cloud.msal || signedIn;
       signOutButton.hidden = !signedIn;
       accountInfo.hidden = !signedIn;
-      document.querySelector("#accountBox").hidden = signInButton.hidden && !signedIn;
       accountInfo.textContent = signedIn ? cloud.account.username : "";
     }
 
