@@ -4,11 +4,19 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Finances</title>
+  <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.28.1/lib/msal-browser.min.js" integrity="sha384-B5PXeUfgiegchZiX5iMRssMrHd9NfPhFnITob1HyW1CY76udptWpBsniaDsH/+BY" crossorigin="anonymous"></script>
   <style>
     body { margin: 0; min-height: 100vh; font-family: Inter, "Segoe UI", Roboto, Arial, sans-serif; background: #f3f6fb; color: #172033; }
     main { max-width: 720px; margin: 0 auto; padding: 48px 20px; }
+    header { display: flex; justify-content: space-between; align-items: flex-start; gap: 20px; }
     h1 { margin: 0 0 6px; font-size: 2rem; }
     p { margin: 0 0 28px; color: #667085; }
+    .account { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+    .account span { color: #667085; font-size: .8rem; overflow-wrap: anywhere; }
+    .account button { padding: 10px 14px; border: 1px solid #dfe5ef; border-radius: 10px; background: #fff; color: #172033; font: inherit; font-weight: 650; cursor: pointer; white-space: nowrap; }
+    .account button:hover { border-color: #1c69d4; }
+    [hidden] { display: none !important; }
+    .status { margin: 0 0 20px; color: #b42318; }
     .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px; }
     a.tile { display: block; padding: 20px; border: 1px solid rgba(23,32,51,.08); border-radius: 16px; background: #fff; color: inherit; text-decoration: none; box-shadow: 0 10px 30px rgba(23,32,51,.08); transition: 140ms ease; }
     a.tile:hover { transform: translateY(-2px); border-color: #1c69d4; }
@@ -18,12 +26,89 @@
 </head>
 <body>
   <main>
-    <h1>Finances</h1>
+    <header>
+      <h1>Finances</h1>
+      <div class="account" id="accountBox" hidden>
+        <span id="accountInfo" hidden></span>
+        <button type="button" id="signInButton" hidden>Sign in with Microsoft</button>
+        <button type="button" id="signOutButton" hidden>Sign out</button>
+      </div>
+    </header>
     <p>Personal finance tools, synced with OneDrive.</p>
+    <p class="status" id="authStatus" role="status" hidden></p>
     <div class="grid">
       <a class="tile" href="salary/"><strong>💼 Salary Account</strong><span>Salary account over time</span></a>
       <a class="tile" href="car-insurance/"><strong>🚗 Car Insurance</strong><span>Car insurance account over time</span></a>
     </div>
   </main>
+  <script>
+    const scopes = ["Files.ReadWrite.AppFolder", "User.Read"];
+    const signInButton = document.querySelector("#signInButton");
+    const signOutButton = document.querySelector("#signOutButton");
+    const accountInfo = document.querySelector("#accountInfo");
+    const authStatus = document.querySelector("#authStatus");
+    let client;
+    let account;
+
+    function showAuthError(message, error) {
+      console.error(message, error);
+      authStatus.textContent = `${message}: ${error.message || error}`;
+      authStatus.hidden = false;
+    }
+
+    function updateAuthUi() {
+      const signedIn = Boolean(account);
+      signInButton.hidden = !client || signedIn;
+      signOutButton.hidden = !signedIn;
+      accountInfo.hidden = !signedIn;
+      accountInfo.textContent = signedIn ? account.username : "";
+      document.querySelector("#accountBox").hidden = signInButton.hidden && !signedIn;
+    }
+
+    async function initializeLogin() {
+      if (location.protocol === "file:") {
+        authStatus.textContent = "Open the hosted HTTPS page to sign in with Microsoft.";
+        authStatus.hidden = false;
+        return;
+      }
+      if (!window.msal) {
+        authStatus.textContent = "Cannot reach Microsoft sign-in service.";
+        authStatus.hidden = false;
+        return;
+      }
+      try {
+        client = new msal.PublicClientApplication({
+          auth: {
+            clientId: "941344c6-c92e-403a-afcd-9c50b07c9d23",
+            authority: "https://login.microsoftonline.com/consumers",
+            redirectUri: location.origin + location.pathname
+          },
+          cache: { cacheLocation: "localStorage" }
+        });
+        await client.initialize();
+        const result = await client.handleRedirectPromise();
+        account = result?.account || client.getAllAccounts()[0] || null;
+        updateAuthUi();
+      } catch (error) {
+        showAuthError("Microsoft sign-in initialization failed", error);
+      }
+    }
+
+    signInButton.addEventListener("click", async () => {
+      try {
+        await client.loginRedirect({ scopes, prompt: "select_account", extraQueryParameters: { ui_locales: "en-US" } });
+      } catch (error) {
+        showAuthError("Microsoft sign-in failed", error);
+      }
+    });
+    signOutButton.addEventListener("click", async () => {
+      try {
+        await client.logoutRedirect({ account, postLogoutRedirectUri: location.origin + location.pathname });
+      } catch (error) {
+        showAuthError("Microsoft sign-out failed", error);
+      }
+    });
+    initializeLogin();
+  </script>
 </body>
 </html>
